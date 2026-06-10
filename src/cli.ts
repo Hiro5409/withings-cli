@@ -1,16 +1,16 @@
 import { cli, define } from "gunshi";
 import { renderHeader } from "gunshi/renderer";
-import { loginCommand } from "./commands/auth/login.ts";
-import { logoutCommand } from "./commands/auth/logout.ts";
-import { statusCommand } from "./commands/auth/status.ts";
-import { activityCommand } from "./commands/activity.ts";
-import { latestCommand } from "./commands/latest.ts";
-import { measuresCommand } from "./commands/measures.ts";
-import { notifyCommand } from "./commands/notify.ts";
-import { rawCommand, rawMeasureGetmeasCommand } from "./commands/raw.ts";
-import { sleepCommand } from "./commands/sleep.ts";
-import { printError } from "./error-output.ts";
-import { globalArgs } from "./global-args.ts";
+import { loginCommand } from "./commands/auth/login.js";
+import { logoutCommand } from "./commands/auth/logout.js";
+import { statusCommand } from "./commands/auth/status.js";
+import { activityCommand } from "./commands/activity.js";
+import { latestCommand } from "./commands/latest.js";
+import { measuresCommand } from "./commands/measures.js";
+import { notifyCommand } from "./commands/notify.js";
+import { rawCommand, rawMeasureGetmeasCommand } from "./commands/raw.js";
+import { sleepCommand } from "./commands/sleep.js";
+import { printError } from "./error-output.js";
+import { globalArgs } from "./global-args.js";
 
 const rootCommand = define({
   name: "withings",

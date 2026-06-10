@@ -1,9 +1,9 @@
 import { define } from "gunshi";
-import { fetchMeasures } from "../api/measures.ts";
-import { configDir } from "../config/config.ts";
-import { globalArgs } from "../global-args.ts";
-import { outputFormat, printJson, printRows } from "../output.ts";
-import { parseUnixSeconds } from "./date-query.ts";
+import { fetchMeasures } from "../api/measures.js";
+import { globalArgs } from "../global-args.js";
+import { outputFormat, printJson, printRows } from "../output.js";
+import { parseUnixSeconds } from "./date-query.js";
+import { tokenStoreForProfile } from "./token-store.js";
 
 const measureArgs = {
   ...globalArgs,
@@ -31,9 +31,9 @@ export const measuresCommand = define({
   description: "List normalized body measures",
   args: measureArgs,
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const result = await fetchMeasures({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       query: {
         startdate: parseUnixSeconds(ctx.values.startdate, "startdate"),
         enddate: parseUnixSeconds(ctx.values.enddate, "enddate"),

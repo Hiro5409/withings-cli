@@ -1,6 +1,5 @@
-import type { TokenSet } from "../config/credentials.ts";
-import { loadCredentials, saveCredentials } from "../config/credentials.ts";
-import { AuthError } from "../errors.ts";
+import type { TokenSet } from "./client.js";
+import { AuthError } from "../errors.js";
 
 const WITHINGS_AUTH_BASE = "https://account.withings.com";
 const WITHINGS_API_BASE = "https://wbsapi.withings.net";
@@ -9,7 +8,7 @@ const TOKEN_PATH = "/v2/oauth2";
 
 export const CALLBACK_PORT = 8765;
 export const CALLBACK_PATH = "/auth/withings/callback";
-const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
+export const DEFAULT_REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
 export const DEFAULT_SCOPE = "user.metrics";
 
 type TokenEndpointResponse = {
@@ -60,12 +59,13 @@ function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
 export function buildAuthorizationUrl(params: {
   clientId: string;
   state: string;
+  redirectUri: string;
   scope?: string;
 }): string {
   const url = new URL(`${WITHINGS_AUTH_BASE}${AUTHORIZE_PATH}`);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", params.clientId);
-  url.searchParams.set("redirect_uri", REDIRECT_URI);
+  url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("scope", params.scope ?? DEFAULT_SCOPE);
   url.searchParams.set("state", params.state);
   return url.toString();
@@ -90,6 +90,7 @@ export async function exchangeCodeForToken(params: {
   clientId: string;
   clientSecret: string;
   code: string;
+  redirectUri: string;
 }): Promise<TokenSet> {
   const data = await postTokenEndpoint({
     action: "requesttoken",
@@ -97,7 +98,7 @@ export async function exchangeCodeForToken(params: {
     client_id: params.clientId,
     client_secret: params.clientSecret,
     code: params.code,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: params.redirectUri,
   });
 
   return {
@@ -131,12 +132,6 @@ export async function refreshAccessToken(tokenSet: TokenSet): Promise<TokenSet> 
     tokenType: data.token_type ?? tokenSet.tokenType,
     csrfToken: data.csrf_token ?? tokenSet.csrfToken,
   };
-}
-
-export function removeProfile(configDir: string, profile: string): void {
-  const creds = loadCredentials(configDir);
-  delete creds[profile];
-  saveCredentials(configDir, creds);
 }
 
 export function getTokenStatus(tokenSet: TokenSet): { isValid: boolean; expiresAt: Date } {

@@ -1,17 +1,17 @@
 import { define } from "gunshi";
 import colors from "yoctocolors";
-import { removeProfile } from "../../api/auth.ts";
-import { configDir } from "../../config/config.ts";
-import { globalArgs } from "../../global-args.ts";
-import { outputFormat, printMessage } from "../../output.ts";
+import { configDir } from "../../config/config.js";
+import { globalArgs } from "../../global-args.js";
+import { outputFormat, printMessage } from "../../output.js";
+import { removeProfile } from "../../stores/file.js";
 
 export const logoutCommand = define({
   name: "logout",
   description: "Remove local credentials for a profile",
   args: globalArgs,
-  run: (ctx) => {
+  run: async (ctx) => {
     const profile = String(ctx.values.profile ?? "default");
-    removeProfile(configDir(), profile);
+    await removeProfile(configDir(), profile);
     printMessage(
       colors.green(`Removed credentials for profile "${profile}".`),
       outputFormat(ctx.values.format),

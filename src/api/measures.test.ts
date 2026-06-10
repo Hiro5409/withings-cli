@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { normalizeMeasureGroup } from "./measures.ts";
+import { normalizeMeasureGroup } from "./measures.js";
 
 test("normalizes tracked Withings body measure types", () => {
   const normalized = normalizeMeasureGroup({

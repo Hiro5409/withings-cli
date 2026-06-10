@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildSleepForm, normalizeSleepSummary, parseSleepPage } from "./sleep.ts";
+import { buildSleepForm, normalizeSleepSummary, parseSleepPage } from "./sleep.js";
 
 test("normalizes nightly sleep summary fields", () => {
   const normalized = normalizeSleepSummary({

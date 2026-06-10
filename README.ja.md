@@ -74,6 +74,36 @@ bun run build
 ./withings --help
 ```
 
+## Library Use
+
+root export から小さな library surface も利用できます:
+
+```ts
+import { createWithingsClient, type TokenSet, type TokenStore } from "withings-cli";
+
+// この最小 KV store は、たとえば 1 つの Durable Object instance 内など、
+// 呼び出しがすでに直列化されている場合に安全です。
+function kvTokenStore(kv: KVNamespace, key = "withings:tokens"): TokenStore {
+  return {
+    async load(): Promise<TokenSet | undefined> {
+      const value = await kv.get<TokenSet>(key, "json");
+      return value ?? undefined;
+    },
+    async save(tokenSet: TokenSet): Promise<void> {
+      await kv.put(key, JSON.stringify(tokenSet));
+    },
+  };
+}
+
+const client = createWithingsClient({ store: kvTokenStore(env.WITHINGS_KV) });
+const latest = await client.fetchLatestMeasure();
+```
+
+Withings の refresh token はローテーションされます。同じ token を複数リクエストが
+同時に refresh しうる場合は、`TokenStore` 実装側の `withRefreshLock` で
+load -> refresh -> save 全体を Durable Object、D1 transaction、その他の lock により
+直列化してください。
+
 ## Usage
 
 ```bash

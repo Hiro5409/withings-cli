@@ -5,11 +5,11 @@ import {
   listNotifications,
   revokeNotification,
   subscribeNotification,
-} from "../api/notify.ts";
-import { configDir } from "../config/config.ts";
-import { CliError } from "../errors.ts";
-import { globalArgs } from "../global-args.ts";
-import { outputFormat, printJson, printMessage, printRows } from "../output.ts";
+} from "../api/notify.js";
+import { CliError } from "../errors.js";
+import { globalArgs } from "../global-args.js";
+import { outputFormat, printJson, printMessage, printRows } from "../output.js";
+import { tokenStoreForProfile } from "./token-store.js";
 
 function parseAppli(value: unknown, required: boolean): number | undefined {
   if (value === undefined) {
@@ -42,9 +42,9 @@ const listCommand = define({
     },
   },
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const subscriptions = await listNotifications({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       appli: parseAppli(ctx.values.appli, false),
     });
 
@@ -86,13 +86,13 @@ const subscribeCommand = define({
     },
   },
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const callbackurl = requireCallbackUrl(ctx.values.callbackurl);
     const appli = parseAppli(ctx.values.appli, true);
     if (appli === undefined) throw new CliError("--appli is required.");
 
     await subscribeNotification({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       callbackurl,
       appli,
       comment: typeof ctx.values.comment === "string" ? ctx.values.comment : undefined,
@@ -121,12 +121,12 @@ const revokeCommand = define({
     },
   },
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const callbackurl = requireCallbackUrl(ctx.values.callbackurl);
     const appli = parseAppli(ctx.values.appli, false);
 
     await revokeNotification({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       callbackurl,
       appli,
     });

@@ -12,8 +12,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ConfigError } from "../errors.ts";
-import { loadCredentials, saveCredentials, withCredentialsLock } from "./credentials.ts";
+import { ConfigError } from "../errors.js";
+import { loadCredentials, saveCredentials, withCredentialsLock } from "./credentials.js";
 
 const tempDirs: string[] = [];
 

@@ -1,5 +1,5 @@
 import colors from "yoctocolors";
-import { CliError } from "./errors.ts";
+import { CliError } from "./errors.js";
 
 const ERROR_PRINTED = Symbol.for("withings-cli.errorPrinted");
 

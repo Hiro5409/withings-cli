@@ -1,17 +1,17 @@
 import { define } from "gunshi";
-import { fetchLatestMeasure } from "../api/measures.ts";
-import { configDir } from "../config/config.ts";
-import { globalArgs } from "../global-args.ts";
-import { outputFormat, printJson, printRows } from "../output.ts";
+import { fetchLatestMeasure } from "../api/measures.js";
+import { globalArgs } from "../global-args.js";
+import { outputFormat, printJson, printRows } from "../output.js";
+import { tokenStoreForProfile } from "./token-store.js";
 
 export const latestCommand = define({
   name: "latest",
   description: "Show the latest normalized body measure",
   args: globalArgs,
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const latest = await fetchLatestMeasure({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
     });
 
     if (outputFormat(ctx.values.format) === "json") {

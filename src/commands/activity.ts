@@ -1,9 +1,9 @@
 import { define } from "gunshi";
-import { fetchActivities } from "../api/activity.ts";
-import { configDir } from "../config/config.ts";
-import { globalArgs } from "../global-args.ts";
-import { outputFormat, printJson, printRows } from "../output.ts";
-import { calendarDateArgs, calendarDateQuery } from "./date-query.ts";
+import { fetchActivities } from "../api/activity.js";
+import { globalArgs } from "../global-args.js";
+import { outputFormat, printJson, printRows } from "../output.js";
+import { calendarDateArgs, calendarDateQuery } from "./date-query.js";
+import { tokenStoreForProfile } from "./token-store.js";
 
 export const activityCommand = define({
   name: "activity",
@@ -13,9 +13,9 @@ export const activityCommand = define({
     ...calendarDateArgs,
   },
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const result = await fetchActivities({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       query: calendarDateQuery(ctx.values),
     });
 

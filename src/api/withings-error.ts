@@ -1,4 +1,4 @@
-import { CliError } from "../errors.ts";
+import { CliError } from "../errors.js";
 
 type WithingsResponse = {
   status?: number;

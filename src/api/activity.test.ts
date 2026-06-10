@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildActivityForm, normalizeActivity, parseActivityPage } from "./activity.ts";
+import { buildActivityForm, normalizeActivity, parseActivityPage } from "./activity.js";
 
 test("normalizes daily activity fields", () => {
   const normalized = normalizeActivity({

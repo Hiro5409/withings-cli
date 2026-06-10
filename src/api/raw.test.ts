@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { CliError } from "../errors.ts";
-import { buildRawForm, parseRawJson, rawServiceUrl } from "./raw.ts";
+import { CliError } from "../errors.js";
+import { buildRawForm, parseRawJson, rawServiceUrl } from "./raw.js";
 
 test("parses an omitted raw JSON payload as an empty object", () => {
   expect(parseRawJson(undefined)).toEqual({});

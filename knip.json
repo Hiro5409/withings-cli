@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["bin/withings"],
+  "entry": ["bin/withings", "src/index.ts"],
   "project": ["src/**/*.ts"],
   "ignoreBinaries": ["gitleaks"]
 }

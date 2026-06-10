@@ -5,13 +5,13 @@ import {
   CALLBACK_PATH,
   CALLBACK_PORT,
   DEFAULT_SCOPE,
+  DEFAULT_REDIRECT_URI,
   exchangeCodeForToken,
   generateState,
-} from "../../api/auth.ts";
-import { configDir } from "../../config/config.ts";
-import { loadCredentials, saveCredentials } from "../../config/credentials.ts";
-import { ConfigError } from "../../errors.ts";
-import { globalArgs } from "../../global-args.ts";
+} from "../../api/auth.js";
+import { ConfigError } from "../../errors.js";
+import { globalArgs } from "../../global-args.js";
+import { tokenStoreForProfile } from "../token-store.js";
 
 export const loginCommand = define({
   name: "login",
@@ -37,7 +37,12 @@ export const loginCommand = define({
     }
 
     const state = generateState();
-    const authUrl = buildAuthorizationUrl({ clientId, state, scope });
+    const authUrl = buildAuthorizationUrl({
+      clientId,
+      state,
+      scope,
+      redirectUri: DEFAULT_REDIRECT_URI,
+    });
 
     console.log(colors.dim("Opening browser for authentication..."));
     console.log(`If the browser does not open, visit:\n${authUrl}\n`);
@@ -46,12 +51,14 @@ export const loginCommand = define({
     Bun.spawn([openCmd, authUrl], { stdout: "ignore", stderr: "ignore" });
 
     const { code } = await waitForCallback(state);
-    const tokenSet = await exchangeCodeForToken({ clientId, clientSecret, code });
+    const tokenSet = await exchangeCodeForToken({
+      clientId,
+      clientSecret,
+      code,
+      redirectUri: DEFAULT_REDIRECT_URI,
+    });
 
-    const dir = configDir();
-    const creds = loadCredentials(dir);
-    creds[profile] = tokenSet;
-    saveCredentials(dir, creds);
+    await tokenStoreForProfile(profile).save(tokenSet);
 
     console.log(colors.green(`Authenticated successfully as profile "${profile}".`));
   },

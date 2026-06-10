@@ -23,13 +23,24 @@
   },
   "files": [
     "bin",
+    "dist",
     "src",
     "!src/**/*.test.ts"
   ],
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "dev": "bun run src/main.ts",
-    "build": "bun build src/main.ts --compile --outfile withings",
+    "build": "bun run build:cli && bun run build:lib",
+    "build:cli": "bun build src/main.ts --compile --outfile withings",
+    "build:lib": "rm -rf dist && bun build src/index.ts --outfile dist/index.js --target browser && tsgo -p tsconfig.dist.json",
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
     "lint": "oxlint && oxfmt --check",
@@ -37,7 +48,8 @@
     "knip": "knip",
     "audit": "bun audit",
     "secrets": "gitleaks git --no-banner --redact .",
-    "prepublishOnly": "bun run typecheck && bun run lint && bun run knip && bun test"
+    "prepare": "bun run build:lib",
+    "prepublishOnly": "bun run build:lib && bun run typecheck && bun run lint && bun run knip && bun test"
   },
   "dependencies": {
     "gunshi": "^0.29.3",

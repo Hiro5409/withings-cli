@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { hasMore, isoFromUnixSeconds, minutesFromSeconds, parseOffset } from "./parse.ts";
+import { hasMore, isoFromUnixSeconds, minutesFromSeconds, parseOffset } from "./parse.js";
 
 test("parses Withings pagination offsets", () => {
   expect(parseOffset(200)).toBe(200);

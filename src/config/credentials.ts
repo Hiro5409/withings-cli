@@ -11,19 +11,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { ConfigError } from "../errors.ts";
-
-export type TokenSet = {
-  userid?: number;
-  clientId: string;
-  clientSecret: string;
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  scope?: string;
-  tokenType?: string;
-  csrfToken?: string;
-};
+import type { TokenSet } from "../api/client.js";
+import { ConfigError } from "../errors.js";
 
 export type Credentials = Record<string, TokenSet>;
 const MALFORMED_LOCK_STALE_MS = 60_000;

@@ -1,20 +1,20 @@
 import { define } from "gunshi";
 import colors from "yoctocolors";
-import { getTokenStatus } from "../../api/auth.ts";
-import { configDir } from "../../config/config.ts";
-import { loadCredentials } from "../../config/credentials.ts";
-import { globalArgs } from "../../global-args.ts";
-import { outputFormat, printJson } from "../../output.ts";
+import { getTokenStatus } from "../../api/auth.js";
+import { configDir } from "../../config/config.js";
+import { globalArgs } from "../../global-args.js";
+import { outputFormat, printJson } from "../../output.js";
+import { FileTokenStore } from "../../stores/file.js";
 
 export const statusCommand = define({
   name: "status",
   description: "Show local authentication status",
   args: globalArgs,
-  run: (ctx) => {
+  run: async (ctx) => {
     const format = outputFormat(ctx.values.format);
     const profile = String(ctx.values.profile ?? "default");
     const dir = configDir();
-    const tokenSet = loadCredentials(dir)[profile];
+    const tokenSet = await new FileTokenStore({ configDir: dir, profile }).load();
 
     if (!tokenSet) {
       const payload = {

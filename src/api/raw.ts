@@ -1,7 +1,7 @@
-import { CliError } from "../errors.ts";
-import { postWithingsForm } from "./client.ts";
-import { isObject, numberOrUndefined } from "./parse.ts";
-import { assertWithingsOk } from "./withings-error.ts";
+import { CliError } from "../errors.js";
+import { postWithingsForm, type TokenStore } from "./client.js";
+import { isObject, numberOrUndefined } from "./parse.js";
+import { assertWithingsOk } from "./withings-error.js";
 
 const SERVICE_URLS: Record<string, string> = {
   heart: "https://wbsapi.withings.net/v2/heart",
@@ -74,8 +74,7 @@ export function rawServiceUrl(service: string): string {
 }
 
 export async function callRawWithings(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   service: string;
   action: string;
   fields: Record<string, unknown>;
@@ -84,8 +83,7 @@ export async function callRawWithings(params: {
   const response = await postWithingsForm({
     url: rawServiceUrl(params.service),
     form: buildRawForm(params.action, params.fields),
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
   });
 
   if (params.throwOnStatus !== false) {

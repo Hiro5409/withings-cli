@@ -1,11 +1,11 @@
 import { define } from "gunshi";
-import { callRawWithings, parseRawJson } from "../api/raw.ts";
-import { fetchMeasures } from "../api/measures.ts";
-import { configDir } from "../config/config.ts";
-import { parseUnixSeconds } from "./date-query.ts";
-import { CliError } from "../errors.ts";
-import { globalArgs } from "../global-args.ts";
-import { printJson } from "../output.ts";
+import { callRawWithings, parseRawJson } from "../api/raw.js";
+import { fetchMeasures } from "../api/measures.js";
+import { parseUnixSeconds } from "./date-query.js";
+import { CliError } from "../errors.js";
+import { globalArgs } from "../global-args.js";
+import { printJson } from "../output.js";
+import { tokenStoreForProfile } from "./token-store.js";
 
 async function readStdinIfPiped(): Promise<string | undefined> {
   if (process.stdin.isTTY) return undefined;
@@ -43,9 +43,9 @@ export const rawCommand = define({
     }
 
     const json = jsonParts.length > 0 ? jsonParts.join(" ") : ((await readStdinIfPiped()) ?? "");
+    const profile = String(ctx.values.profile ?? "default");
     const response = await callRawWithings({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       service,
       action,
       fields: parseRawJson(json),
@@ -74,9 +74,9 @@ export const rawMeasureGetmeasCommand = define({
     },
   },
   run: async (ctx) => {
+    const profile = String(ctx.values.profile ?? "default");
     const result = await fetchMeasures({
-      configDir: configDir(),
-      profile: String(ctx.values.profile ?? "default"),
+      store: tokenStoreForProfile(profile),
       query: {
         startdate: parseUnixSeconds(ctx.values.startdate, "startdate"),
         enddate: parseUnixSeconds(ctx.values.enddate, "enddate"),

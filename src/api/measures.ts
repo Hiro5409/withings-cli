@@ -1,4 +1,4 @@
-import { postWithingsForm } from "./client.ts";
+import { postWithingsForm, type TokenStore } from "./client.js";
 import {
   hasMore,
   isObject,
@@ -7,13 +7,13 @@ import {
   parseOffset,
   stringOrUndefined,
   type WithingsMore,
-} from "./parse.ts";
-import { assertWithingsOk } from "./withings-error.ts";
+} from "./parse.js";
+import { assertWithingsOk } from "./withings-error.js";
 
 const TRACKED_MEASURE_TYPES = [1, 5, 6, 8, 76, 77, 88] as const;
 const TRACKED_MEASURE_TYPES_PARAM = TRACKED_MEASURE_TYPES.join(",");
 
-type MeasureQuery = {
+export type MeasureQuery = {
   startdate?: number;
   enddate?: number;
   lastupdate?: number;
@@ -114,8 +114,7 @@ function parseGetmeasPage(value: unknown): GetmeasPage {
 }
 
 async function getMeasuresPage(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   query: MeasureQuery;
   offset?: number;
 }): Promise<GetmeasPage> {
@@ -133,17 +132,12 @@ async function getMeasuresPage(params: {
   const response = await postWithingsForm({
     url: "https://wbsapi.withings.net/measure",
     form,
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
   });
   return parseGetmeasPage(response);
 }
 
-export async function fetchMeasures(params: {
-  configDir: string;
-  profile: string;
-  query: MeasureQuery;
-}): Promise<{
+export async function fetchMeasures(params: { store: TokenStore; query: MeasureQuery }): Promise<{
   measures: NormalizedMeasureGroup[];
   pages: number;
   raw: unknown[];
@@ -154,8 +148,7 @@ export async function fetchMeasures(params: {
 
   for (let page = 0; page < 100; page += 1) {
     const result = await getMeasuresPage({
-      configDir: params.configDir,
-      profile: params.profile,
+      store: params.store,
       query: params.query,
       offset,
     });
@@ -175,12 +168,10 @@ export async function fetchMeasures(params: {
 }
 
 export async function fetchLatestMeasure(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
 }): Promise<NormalizedMeasureGroup | undefined> {
   const result = await fetchMeasures({
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
     query: { limit: 1 },
   });
   return result.measures[0];

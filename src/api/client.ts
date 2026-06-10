@@ -1,37 +1,68 @@
-import type { TokenSet } from "../config/credentials.ts";
-import { loadCredentials, saveCredentials, withCredentialsLock } from "../config/credentials.ts";
-import { AuthError, CliError } from "../errors.ts";
-import { getTokenStatus, refreshAccessToken } from "./auth.ts";
+import { AuthError, CliError } from "../errors.js";
+import { getTokenStatus, refreshAccessToken } from "./auth.js";
 
-async function ensureValidToken(configDir: string, profile: string): Promise<TokenSet> {
-  const creds = loadCredentials(configDir);
-  const tokenSet = creds[profile];
+export type TokenSet = {
+  userid?: number;
+  clientId: string;
+  clientSecret: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  scope?: string;
+  tokenType?: string;
+  csrfToken?: string;
+};
+
+/**
+ * Storage for one Withings OAuth token set.
+ *
+ * Withings refresh tokens rotate. If multiple requests may refresh the same
+ * token concurrently, the store implementation must serialize that refresh
+ * path, for example with a Durable Object, database transaction, or file lock.
+ */
+export type TokenStore = {
+  load(): Promise<TokenSet | undefined>;
+  save(tokenSet: TokenSet): Promise<void>;
+
+  /**
+   * Optional single-flight boundary for the load -> refresh -> save sequence.
+   * Implement this when concurrent requests can refresh the same token set.
+   */
+  withRefreshLock?<T>(fn: () => Promise<T>): Promise<T>;
+};
+
+async function refreshAndSaveToken(store: TokenStore): Promise<TokenSet> {
+  const tokenSet = await store.load();
 
   if (!tokenSet) {
-    throw new AuthError(`No credentials for profile "${profile}". Run "withings login" first.`);
+    throw new AuthError('No credentials found. Run "withings login" first.');
   }
 
   if (getTokenStatus(tokenSet).isValid) return tokenSet;
 
-  return withCredentialsLock(configDir, async () => {
-    const lockedCreds = loadCredentials(configDir);
-    const lockedTokenSet = lockedCreds[profile];
-
-    if (!lockedTokenSet) {
-      throw new AuthError(`No credentials for profile "${profile}". Run "withings login" first.`);
-    }
-
-    if (getTokenStatus(lockedTokenSet).isValid) return lockedTokenSet;
-
-    const refreshed = await refreshAccessToken(lockedTokenSet);
-    lockedCreds[profile] = refreshed;
-    saveCredentials(configDir, lockedCreds);
-    return refreshed;
-  });
+  const refreshed = await refreshAccessToken(tokenSet);
+  await store.save(refreshed);
+  return refreshed;
 }
 
-async function authHeaders(configDir: string, profile: string): Promise<{ Authorization: string }> {
-  const token = await ensureValidToken(configDir, profile);
+async function ensureValidToken(store: TokenStore): Promise<TokenSet> {
+  const tokenSet = await store.load();
+
+  if (!tokenSet) {
+    throw new AuthError('No credentials found. Run "withings login" first.');
+  }
+
+  if (getTokenStatus(tokenSet).isValid) return tokenSet;
+
+  if (store.withRefreshLock) {
+    return store.withRefreshLock(() => refreshAndSaveToken(store));
+  }
+
+  return refreshAndSaveToken(store);
+}
+
+async function authHeaders(store: TokenStore): Promise<{ Authorization: string }> {
+  const token = await ensureValidToken(store);
   return { Authorization: `Bearer ${token.accessToken}` };
 }
 
@@ -42,10 +73,9 @@ async function authHeaders(configDir: string, profile: string): Promise<{ Author
 export async function postWithingsForm(params: {
   url: string;
   form: URLSearchParams;
-  configDir: string;
-  profile: string;
+  store: TokenStore;
 }): Promise<unknown> {
-  const headers = await authHeaders(params.configDir, params.profile);
+  const headers = await authHeaders(params.store);
   const res = await fetch(params.url, {
     method: "POST",
     headers: {

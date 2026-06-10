@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { WithingsApiError } from "./api/withings-error.ts";
-import { printError } from "./error-output.ts";
+import { WithingsApiError } from "./api/withings-error.js";
+import { printError } from "./error-output.js";
 
 test("prints structured Withings API fields in JSON error output", () => {
   const originalError = console.error;

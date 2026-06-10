@@ -1,4 +1,4 @@
-import { postWithingsForm } from "./client.ts";
+import { postWithingsForm, type TokenStore } from "./client.js";
 import {
   hasMore,
   isoFromUnixSeconds,
@@ -9,8 +9,8 @@ import {
   parseOffset,
   stringOrUndefined,
   type WithingsMore,
-} from "./parse.ts";
-import { assertWithingsOk } from "./withings-error.ts";
+} from "./parse.js";
+import { assertWithingsOk } from "./withings-error.js";
 
 const SLEEP_DATA_FIELDS = [
   "total_sleep_time",
@@ -102,23 +102,20 @@ export function parseSleepPage(value: unknown): SleepPage {
 }
 
 async function getSleepPage(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   query: SleepQuery;
   offset?: number;
 }): Promise<SleepPage> {
   const response = await postWithingsForm({
     url: "https://wbsapi.withings.net/v2/sleep",
     form: buildSleepForm(params.query, params.offset),
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
   });
   return parseSleepPage(response);
 }
 
 export async function fetchSleepSummaries(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   query: SleepQuery;
 }): Promise<{
   sleep: NormalizedSleepSummary[];
@@ -131,8 +128,7 @@ export async function fetchSleepSummaries(params: {
 
   for (let page = 0; page < 100; page += 1) {
     const result = await getSleepPage({
-      configDir: params.configDir,
-      profile: params.profile,
+      store: params.store,
       query: params.query,
       offset,
     });

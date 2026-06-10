@@ -1,4 +1,4 @@
-import { postWithingsForm } from "./client.ts";
+import { postWithingsForm, type TokenStore } from "./client.js";
 import {
   hasMore,
   isObject,
@@ -8,8 +8,8 @@ import {
   parseOffset,
   stringOrUndefined,
   type WithingsMore,
-} from "./parse.ts";
-import { assertWithingsOk } from "./withings-error.ts";
+} from "./parse.js";
+import { assertWithingsOk } from "./withings-error.js";
 
 const ACTIVITY_DATA_FIELDS = [
   "steps",
@@ -97,23 +97,20 @@ export function parseActivityPage(value: unknown): ActivityPage {
 }
 
 async function getActivityPage(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   query: ActivityQuery;
   offset?: number;
 }): Promise<ActivityPage> {
   const response = await postWithingsForm({
     url: "https://wbsapi.withings.net/v2/measure",
     form: buildActivityForm(params.query, params.offset),
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
   });
   return parseActivityPage(response);
 }
 
 export async function fetchActivities(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   query: ActivityQuery;
 }): Promise<{
   activities: NormalizedActivity[];
@@ -126,8 +123,7 @@ export async function fetchActivities(params: {
 
   for (let page = 0; page < 100; page += 1) {
     const result = await getActivityPage({
-      configDir: params.configDir,
-      profile: params.profile,
+      store: params.store,
       query: params.query,
       offset,
     });

@@ -1,6 +1,6 @@
-import { postWithingsForm } from "./client.ts";
-import { isObject, numberOrUndefined, stringOrUndefined } from "./parse.ts";
-import { assertWithingsOk } from "./withings-error.ts";
+import { postWithingsForm, type TokenStore } from "./client.js";
+import { isObject, numberOrUndefined, stringOrUndefined } from "./parse.js";
+import { assertWithingsOk } from "./withings-error.js";
 
 const NOTIFY_URL = "https://wbsapi.withings.net/notify";
 
@@ -29,16 +29,14 @@ function parseSubscription(value: unknown): NotifySubscription {
 }
 
 async function callNotify(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   action: string;
   fields: Record<string, string>;
 }): Promise<Record<string, unknown>> {
   const response = await postWithingsForm({
     url: NOTIFY_URL,
     form: new URLSearchParams({ action: params.action, ...params.fields }),
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
   });
   const root = isObject(response) ? response : {};
   assertWithingsOk(
@@ -49,13 +47,11 @@ async function callNotify(params: {
 }
 
 export async function listNotifications(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   appli?: number;
 }): Promise<NotifySubscription[]> {
   const root = await callNotify({
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
     action: "list",
     fields: params.appli === undefined ? {} : { appli: String(params.appli) },
   });
@@ -65,15 +61,13 @@ export async function listNotifications(params: {
 }
 
 export async function subscribeNotification(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   callbackurl: string;
   appli: number;
   comment?: string;
 }): Promise<void> {
   await callNotify({
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
     action: "subscribe",
     fields: {
       callbackurl: params.callbackurl,
@@ -84,14 +78,12 @@ export async function subscribeNotification(params: {
 }
 
 export async function revokeNotification(params: {
-  configDir: string;
-  profile: string;
+  store: TokenStore;
   callbackurl: string;
   appli?: number;
 }): Promise<void> {
   await callNotify({
-    configDir: params.configDir,
-    profile: params.profile,
+    store: params.store,
     action: "revoke",
     fields: {
       callbackurl: params.callbackurl,

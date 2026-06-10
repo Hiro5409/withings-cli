@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { assertWithingsOk, WithingsApiError } from "./withings-error.ts";
+import { assertWithingsOk, WithingsApiError } from "./withings-error.js";
 
 test("allows successful Withings responses", () => {
   expect(() =>

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { CliError } from "../errors.ts";
-import { calendarDateQuery, parseUnixSeconds } from "./date-query.ts";
+import { CliError } from "../errors.js";
+import { calendarDateQuery, parseUnixSeconds } from "./date-query.js";
 
 test("builds an explicit calendar date query", () => {
   expect(
