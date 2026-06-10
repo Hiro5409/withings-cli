@@ -12,13 +12,20 @@ Thin local-first CLI for the Withings Public API.
 Requires [Bun](https://bun.sh/).
 
 ```bash
-bun install
-bun src/main.ts --help
+bunx withings-cli --help
+```
+
+For repeated use, install the CLI globally:
+
+```bash
+bun add -g withings-cli
+withings --help
 ```
 
 For local development:
 
 ```bash
+bun install
 bun run dev -- status
 bun run build
 ./withings --help
@@ -48,7 +55,7 @@ export WITHINGS_CLIENT_SECRET="your-client-secret"
 Then authenticate:
 
 ```bash
-bun src/main.ts login
+withings login
 ```
 
 The login flow opens the Withings authorization URL and exchanges the short-lived
