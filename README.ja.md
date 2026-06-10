@@ -1,21 +1,64 @@
-# withings-cli
+<p align="center">
+  <img src="./assets/withings-cli-hero.png" alt="withings CLI" width="100%">
+</p>
 
-[![CI](https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<h1 align="center">withings-cli</h1>
 
-[English](README.md) | 日本語
+<p align="center">
+  Withings Public API のための薄いローカルファースト CLI です。
+</p>
 
-Withings Public API のための薄いローカルファースト CLI です。
+<p align="center">
+  <a href="https://www.npmjs.com/package/withings-cli">
+    <img src="https://img.shields.io/npm/v/withings-cli" alt="npm version">
+  </a>
+  <a href="https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml">
+    <img src="https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+  </a>
+</p>
 
-## Install
+<p align="center">
+  <a href="README.md">English</a> | 日本語
+</p>
+
+## Quick Start
 
 [Bun](https://bun.sh/) が必要です。
 
-```bash
-bunx withings-cli --help
-```
+1. Withings の開発者アプリケーションを
+   <https://developer.withings.com/dashboard/> で作成します。コールバック
+   URL には以下を指定してください:
 
-繰り返し使う場合は CLI を global install します:
+   ```text
+   http://localhost:8765/auth/withings/callback
+   ```
+
+2. そのアプリケーションの OAuth クレデンシャルを環境変数に設定します:
+
+   ```bash
+   export WITHINGS_CLIENT_ID="your-client-id"
+   export WITHINGS_CLIENT_SECRET="your-client-secret"
+   ```
+
+3. ログインします（ブラウザで Withings の認可ページが開きます）:
+
+   ```bash
+   bunx withings-cli login
+   ```
+
+4. 最新の体組成を取得します:
+
+   ```bash
+   bunx withings-cli latest
+   ```
+
+## Install
+
+`bunx withings-cli` ならインストール不要で使えます。繰り返し使う場合は
+CLI を global install します:
 
 ```bash
 bun add -g withings-cli
@@ -30,67 +73,6 @@ bun run dev -- status
 bun run build
 ./withings --help
 ```
-
-## Setup
-
-Withings の開発者アプリケーションを以下で作成します:
-
-```text
-https://developer.withings.com/dashboard/
-```
-
-コールバック URL には以下を指定してください:
-
-```text
-http://localhost:8765/auth/withings/callback
-```
-
-OAuth クレデンシャルを環境変数に設定します:
-
-```bash
-export WITHINGS_CLIENT_ID="your-client-id"
-export WITHINGS_CLIENT_SECRET="your-client-secret"
-```
-
-その後、認証します:
-
-```bash
-withings login
-```
-
-login フローは Withings の認可 URL をブラウザで開き、短命の認可コードを
-ローカルのコールバックサーバー経由でトークンに交換します。トークンは以下に
-保存されます:
-
-```text
-~/.config/withings-cli/credentials.json
-```
-
-クレデンシャルファイルは `0600` パーミッションで書き込まれます。OAuth
-クレデンシャルや生のコールバック URL をコミットしないでください。
-
-### OAuth の設計メモ
-
-login フローは、[Withings の OAuth 実装](https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/get-access/oauth-web-flow)が許す範囲で
-[RFC 8252 (OAuth 2.0 for Native Apps)](https://datatracker.ietf.org/doc/html/rfc8252)
-に従っています:
-
-- ループバックリダイレクトを使った Authorization Code フロー。コールバック
-  サーバーは `127.0.0.1` にバインドし、現在のログイン試行用に生成した
-  CSRF トークンと `state` が一致しないリクエストは無視します。
-- **PKCE なし**: Withings は PKCE をサポートしていません。`state` 検証と
-  ループバック限定のリスナーがその代わりを担います。
-- **`client_secret` をトークンと並べて保存**: Withings の
-  [トークンエンドポイント](https://developer.withings.com/api-reference/#tag/oauth2)
-  はリフレッシュのたびに `client_id` と `client_secret` を要求するため、
-  登録した secret を `credentials.json`（mode `0600`）に保持し、環境変数を
-  再エクスポートせずにリフレッシュできるようにしています。
-- Withings は他の点でも標準の OAuth 2.0 から逸脱しています: トークン
-  エンドポイントは `action=requesttoken` パラメータを必要とし、レスポンスを
-  `{ status, body }` のエンベロープで包みます。手書きの auth モジュールが
-  これらの癖を吸収します。
-- `logout` はローカルのクレデンシャルを削除するだけです。Withings の
-  アクセストークンは数時間で自然に失効します。
 
 ## Usage
 
@@ -111,11 +93,17 @@ withings <command> [options]
 ### Auth
 
 ```bash
-withings login
-withings status
+withings login                  # ブラウザ経由の OAuth ログイン
+withings status                 # ログイン状態を表示
 withings status --format json
-withings logout
+withings logout                 # ローカルのクレデンシャルを削除
 ```
+
+トークンは `~/.config/withings-cli/credentials.json` に `0600`
+パーミッションで保存されます。OAuth クレデンシャルや生のコールバック URL を
+コミットしないでください。`logout` はローカルのクレデンシャルを削除する
+だけです。Withings のアクセストークンは数時間で自然に失効します。login
+フローの仕組みは [OAuth の設計メモ](#oauth-の設計メモ)を参照してください。
 
 `status --format json` はクレデンシャルが存在しない場合でも構造化された
 JSON を返します:
@@ -132,9 +120,9 @@ JSON を返します:
 ### Body measures
 
 ```bash
-withings latest
+withings latest                 # 計測タイプごとの最新値
 withings latest --format json
-withings measures --limit 30
+withings measures --limit 30    # 計測履歴
 withings measures --startdate 1710000000 --enddate 1720000000 --format json
 withings measures --lastupdate 1720000000 --format json
 ```
@@ -157,7 +145,7 @@ withings measures --lastupdate 1720000000 --format json
 ### Activity
 
 ```bash
-withings activity
+withings activity               # 日次のアクティビティサマリー
 withings activity --limit 7 --format json
 withings activity --startdateymd 2026-06-01 --enddateymd 2026-06-10
 withings activity --lastupdate 1720000000
@@ -173,7 +161,7 @@ withings activity --lastupdate 1720000000
 ### Sleep
 
 ```bash
-withings sleep
+withings sleep                  # 昼寝を含む睡眠期間ごとに 1 行
 withings sleep --limit 7 --format json
 withings sleep --startdateymd 2026-06-01 --enddateymd 2026-06-10
 withings sleep --lastupdate 1720000000
@@ -247,6 +235,29 @@ bun install
 bun run typecheck
 bun test
 ```
+
+### OAuth の設計メモ
+
+login フローは Withings の認可 URL をブラウザで開き、短命の認可コードを
+ローカルのコールバックサーバー経由でトークンに交換します。
+[Withings の OAuth 実装](https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/get-access/oauth-web-flow)が許す範囲で
+[RFC 8252 (OAuth 2.0 for Native Apps)](https://datatracker.ietf.org/doc/html/rfc8252)
+に従っています:
+
+- ループバックリダイレクトを使った Authorization Code フロー。コールバック
+  サーバーは `127.0.0.1` にバインドし、現在のログイン試行用に生成した
+  CSRF トークンと `state` が一致しないリクエストは無視します。
+- **PKCE なし**: Withings は PKCE をサポートしていません。`state` 検証と
+  ループバック限定のリスナーがその代わりを担います。
+- **`client_secret` をトークンと並べて保存**: Withings の
+  [トークンエンドポイント](https://developer.withings.com/api-reference/#tag/oauth2)
+  はリフレッシュのたびに `client_id` と `client_secret` を要求するため、
+  登録した secret を `credentials.json`（mode `0600`）に保持し、環境変数を
+  再エクスポートせずにリフレッシュできるようにしています。
+- Withings は他の点でも標準の OAuth 2.0 から逸脱しています: トークン
+  エンドポイントは `action=requesttoken` パラメータを必要とし、レスポンスを
+  `{ status, body }` のエンベロープで包みます。手書きの auth モジュールが
+  これらの癖を吸収します。
 
 ### 型のポリシー
 

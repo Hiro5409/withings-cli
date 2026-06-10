@@ -1,21 +1,63 @@
-# withings-cli
+<p align="center">
+  <img src="./assets/withings-cli-hero.png" alt="withings CLI" width="100%">
+</p>
 
-[![CI](https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+<h1 align="center">withings-cli</h1>
 
-English | [日本語](README.ja.md)
+<p align="center">
+  Thin local-first CLI for the Withings Public API.
+</p>
 
-Thin local-first CLI for the Withings Public API.
+<p align="center">
+  <a href="https://www.npmjs.com/package/withings-cli">
+    <img src="https://img.shields.io/npm/v/withings-cli" alt="npm version">
+  </a>
+  <a href="https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml">
+    <img src="https://github.com/Hiro5409/withings-cli/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
+  </a>
+</p>
 
-## Install
+<p align="center">
+  English | <a href="README.ja.md">日本語</a>
+</p>
+
+## Quick Start
 
 Requires [Bun](https://bun.sh/).
 
-```bash
-bunx withings-cli --help
-```
+1. Create a Withings developer application at
+   <https://developer.withings.com/dashboard/> with this callback URL:
 
-For repeated use, install the CLI globally:
+   ```text
+   http://localhost:8765/auth/withings/callback
+   ```
+
+2. Export the OAuth credentials of that application:
+
+   ```bash
+   export WITHINGS_CLIENT_ID="your-client-id"
+   export WITHINGS_CLIENT_SECRET="your-client-secret"
+   ```
+
+3. Log in (opens the Withings authorization page in your browser):
+
+   ```bash
+   bunx withings-cli login
+   ```
+
+4. Fetch your latest body measurements:
+
+   ```bash
+   bunx withings-cli latest
+   ```
+
+## Install
+
+`bunx withings-cli` works without installing. For repeated use, install the
+CLI globally:
 
 ```bash
 bun add -g withings-cli
@@ -30,66 +72,6 @@ bun run dev -- status
 bun run build
 ./withings --help
 ```
-
-## Setup
-
-Create a Withings developer application at:
-
-```text
-https://developer.withings.com/dashboard/
-```
-
-Use this callback URL:
-
-```text
-http://localhost:8765/auth/withings/callback
-```
-
-Set OAuth credentials in the environment:
-
-```bash
-export WITHINGS_CLIENT_ID="your-client-id"
-export WITHINGS_CLIENT_SECRET="your-client-secret"
-```
-
-Then authenticate:
-
-```bash
-withings login
-```
-
-The login flow opens the Withings authorization URL and exchanges the short-lived
-authorization code through a local callback server. Tokens are stored locally in:
-
-```text
-~/.config/withings-cli/credentials.json
-```
-
-The credentials file is written with `0600` permissions. Do not commit OAuth
-credentials or raw callback URLs.
-
-### OAuth design notes
-
-The login flow follows [RFC 8252 (OAuth 2.0 for Native Apps)](https://datatracker.ietf.org/doc/html/rfc8252)
-where the [Withings OAuth implementation](https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/get-access/oauth-web-flow)
-allows it:
-
-- Authorization Code flow with a loopback redirect; the callback server binds
-  to `127.0.0.1` and ignores requests whose `state` does not match the
-  CSRF token generated for the current login attempt.
-- **No PKCE**: Withings does not support PKCE. The `state` check plus the
-  loopback-only listener stand in for it.
-- **`client_secret` is stored next to the tokens**: the Withings
-  [token endpoint](https://developer.withings.com/api-reference/#tag/oauth2)
-  requires `client_id` and `client_secret` on every refresh, so the secret you
-  registered is kept in `credentials.json` (mode `0600`) to make refresh work
-  without re-exporting environment variables.
-- Withings deviates from standard OAuth 2.0 in other ways as well: the token
-  endpoint needs an `action=requesttoken` parameter and wraps its response in
-  a `{ status, body }` envelope. The hand-written auth module absorbs these
-  quirks.
-- `logout` removes local credentials only; Withings access tokens expire on
-  their own after a few hours.
 
 ## Usage
 
@@ -110,11 +92,17 @@ During development, replace `withings` with `bun src/main.ts`.
 ### Auth
 
 ```bash
-withings login
-withings status
+withings login                  # OAuth login via browser
+withings status                 # show who is logged in
 withings status --format json
-withings logout
+withings logout                 # remove local credentials
 ```
+
+Tokens are stored locally in `~/.config/withings-cli/credentials.json`,
+written with `0600` permissions. Do not commit OAuth credentials or raw
+callback URLs. `logout` removes local credentials only; Withings access
+tokens expire on their own after a few hours. See
+[OAuth design notes](#oauth-design-notes) for how the login flow works.
 
 `status --format json` returns structured JSON even when no credentials exist:
 
@@ -130,9 +118,9 @@ withings logout
 ### Body measures
 
 ```bash
-withings latest
+withings latest                 # most recent value per measure type
 withings latest --format json
-withings measures --limit 30
+withings measures --limit 30    # measurement history
 withings measures --startdate 1710000000 --enddate 1720000000 --format json
 withings measures --lastupdate 1720000000 --format json
 ```
@@ -154,7 +142,7 @@ The CLI follows `more` / `offset` pagination for `measure-getmeas`.
 ### Activity
 
 ```bash
-withings activity
+withings activity               # daily activity summary
 withings activity --limit 7 --format json
 withings activity --startdateymd 2026-06-01 --enddateymd 2026-06-10
 withings activity --lastupdate 1720000000
@@ -169,7 +157,7 @@ category `16` notifies activity changes.
 ### Sleep
 
 ```bash
-withings sleep
+withings sleep                  # one row per sleep period, naps included
 withings sleep --limit 7 --format json
 withings sleep --startdateymd 2026-06-01 --enddateymd 2026-06-10
 withings sleep --lastupdate 1720000000
@@ -242,6 +230,29 @@ bun install
 bun run typecheck
 bun test
 ```
+
+### OAuth design notes
+
+The login flow opens the Withings authorization URL and exchanges the
+short-lived authorization code through a local callback server. It follows
+[RFC 8252 (OAuth 2.0 for Native Apps)](https://datatracker.ietf.org/doc/html/rfc8252)
+where the [Withings OAuth implementation](https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/get-access/oauth-web-flow)
+allows it:
+
+- Authorization Code flow with a loopback redirect; the callback server binds
+  to `127.0.0.1` and ignores requests whose `state` does not match the
+  CSRF token generated for the current login attempt.
+- **No PKCE**: Withings does not support PKCE. The `state` check plus the
+  loopback-only listener stand in for it.
+- **`client_secret` is stored next to the tokens**: the Withings
+  [token endpoint](https://developer.withings.com/api-reference/#tag/oauth2)
+  requires `client_id` and `client_secret` on every refresh, so the secret you
+  registered is kept in `credentials.json` (mode `0600`) to make refresh work
+  without re-exporting environment variables.
+- Withings deviates from standard OAuth 2.0 in other ways as well: the token
+  endpoint needs an `action=requesttoken` parameter and wraps its response in
+  a `{ status, body }` envelope. The hand-written auth module absorbs these
+  quirks.
 
 ### Type policy
 
