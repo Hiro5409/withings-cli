@@ -1,0 +1,3 @@
+[install]
+# Delay newly published package versions to reduce npm supply-chain blast radius.
+minimumReleaseAge = 604800
