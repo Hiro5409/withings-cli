@@ -1,0 +1,101 @@
+import { postWithingsForm } from "./client.ts";
+import { isObject, numberOrUndefined, stringOrUndefined } from "./parse.ts";
+import { assertWithingsOk } from "./withings-error.ts";
+
+const NOTIFY_URL = "https://wbsapi.withings.net/notify";
+
+// Notification categories ("appli") relevant to consumer health data. Full
+// list: https://developer.withings.com/developer-guide/v3/data-api/notifications/notification-overview/
+export const KNOWN_APPLI =
+  "1=weight/body composition, 4=heart/blood pressure, 16=activity, 44=sleep";
+
+export type NotifySubscription = {
+  appli?: number;
+  callbackurl?: string;
+  comment?: string;
+  expires?: number;
+  raw: unknown;
+};
+
+function parseSubscription(value: unknown): NotifySubscription {
+  const fields = isObject(value) ? value : {};
+  return {
+    appli: numberOrUndefined(fields.appli),
+    callbackurl: stringOrUndefined(fields.callbackurl),
+    comment: stringOrUndefined(fields.comment),
+    expires: numberOrUndefined(fields.expires),
+    raw: value,
+  };
+}
+
+async function callNotify(params: {
+  configDir: string;
+  profile: string;
+  action: string;
+  fields: Record<string, string>;
+}): Promise<Record<string, unknown>> {
+  const response = await postWithingsForm({
+    url: NOTIFY_URL,
+    form: new URLSearchParams({ action: params.action, ...params.fields }),
+    configDir: params.configDir,
+    profile: params.profile,
+  });
+  const root = isObject(response) ? response : {};
+  assertWithingsOk(
+    { status: numberOrUndefined(root.status), body: root.body },
+    { service: "notify", action: params.action },
+  );
+  return root;
+}
+
+export async function listNotifications(params: {
+  configDir: string;
+  profile: string;
+  appli?: number;
+}): Promise<NotifySubscription[]> {
+  const root = await callNotify({
+    configDir: params.configDir,
+    profile: params.profile,
+    action: "list",
+    fields: params.appli === undefined ? {} : { appli: String(params.appli) },
+  });
+  const body = isObject(root.body) ? root.body : {};
+  const profiles = Array.isArray(body.profiles) ? body.profiles : [];
+  return profiles.map(parseSubscription);
+}
+
+export async function subscribeNotification(params: {
+  configDir: string;
+  profile: string;
+  callbackurl: string;
+  appli: number;
+  comment?: string;
+}): Promise<void> {
+  await callNotify({
+    configDir: params.configDir,
+    profile: params.profile,
+    action: "subscribe",
+    fields: {
+      callbackurl: params.callbackurl,
+      appli: String(params.appli),
+      ...(params.comment === undefined ? {} : { comment: params.comment }),
+    },
+  });
+}
+
+export async function revokeNotification(params: {
+  configDir: string;
+  profile: string;
+  callbackurl: string;
+  appli?: number;
+}): Promise<void> {
+  await callNotify({
+    configDir: params.configDir,
+    profile: params.profile,
+    action: "revoke",
+    fields: {
+      callbackurl: params.callbackurl,
+      ...(params.appli === undefined ? {} : { appli: String(params.appli) }),
+    },
+  });
+}

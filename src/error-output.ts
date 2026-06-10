@@ -11,9 +11,13 @@ export function wasErrorPrinted(error: unknown): boolean {
   );
 }
 
-export function markErrorPrinted(error: unknown): void {
+function markErrorPrinted(error: unknown): void {
   if (error && typeof error === "object") {
-    (error as ErrorWithPrintedFlag)[ERROR_PRINTED] = true;
+    try {
+      (error as ErrorWithPrintedFlag)[ERROR_PRINTED] = true;
+    } catch {
+      // Some parser errors are frozen by the CLI framework.
+    }
   }
 }
 
@@ -46,6 +50,10 @@ function errorPayload(error: unknown): Record<string, unknown> {
   };
 
   if (error instanceof CliError) {
+    if (error.code) payload.code = error.code;
+    for (const [key, value] of Object.entries(error.details ?? {})) {
+      if (!(key in payload)) payload[key] = value;
+    }
     if (error.why) payload.why = error.why;
     if (error.hint) payload.hint = error.hint;
   }
@@ -58,6 +66,10 @@ export function printError(error: unknown, format: string): number {
     console.error(JSON.stringify(errorPayload(error), null, 2));
   } else {
     console.error(colors.red(errorMessage(error)));
+    if (error instanceof CliError) {
+      if (error.why) console.error(colors.dim(`why: ${error.why}`));
+      if (error.hint) console.error(colors.dim(`hint: ${error.hint}`));
+    }
   }
   markErrorPrinted(error);
   return errorExitCode(error);

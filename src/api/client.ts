@@ -1,18 +1,9 @@
 import type { TokenSet } from "../config/credentials.ts";
 import { loadCredentials, saveCredentials } from "../config/credentials.ts";
-import { AuthError } from "../errors.ts";
-import { client } from "../types/withings/client.gen.ts";
+import { AuthError, CliError } from "../errors.ts";
 import { getTokenStatus, refreshAccessToken } from "./auth.ts";
 
-export { client };
-
-const refreshPromises = new Map<string, Promise<TokenSet>>();
-
-function refreshKey(configDir: string, profile: string): string {
-  return `${configDir}\0${profile}`;
-}
-
-export async function ensureValidToken(configDir: string, profile: string): Promise<TokenSet> {
+async function ensureValidToken(configDir: string, profile: string): Promise<TokenSet> {
   const creds = loadCredentials(configDir);
   const tokenSet = creds[profile];
 
@@ -22,30 +13,40 @@ export async function ensureValidToken(configDir: string, profile: string): Prom
 
   if (getTokenStatus(tokenSet).isValid) return tokenSet;
 
-  const key = refreshKey(configDir, profile);
-  if (!refreshPromises.has(key)) {
-    const refreshPromise = refreshAccessToken(tokenSet)
-      .then((refreshed) => {
-        const current = loadCredentials(configDir);
-        current[profile] = refreshed;
-        saveCredentials(configDir, current);
-        return refreshed;
-      })
-      .finally(() => {
-        refreshPromises.delete(key);
-      });
-    refreshPromises.set(key, refreshPromise);
-  }
-
-  const refreshPromise = refreshPromises.get(key);
-  if (!refreshPromise) throw new AuthError("Token refresh did not start.");
-  return refreshPromise;
+  const refreshed = await refreshAccessToken(tokenSet);
+  creds[profile] = refreshed;
+  saveCredentials(configDir, creds);
+  return refreshed;
 }
 
-export async function authHeaders(
-  configDir: string,
-  profile: string,
-): Promise<{ Authorization: string }> {
+async function authHeaders(configDir: string, profile: string): Promise<{ Authorization: string }> {
   const token = await ensureValidToken(configDir, profile);
   return { Authorization: `Bearer ${token.accessToken}` };
+}
+
+// Withings is an RPC-style API: every service is a form-encoded POST that
+// answers HTTP 200 with a { status, body } envelope. Callers check the
+// envelope status themselves (see assertWithingsOk) so they can keep the
+// raw response for `--format json` output.
+export async function postWithingsForm(params: {
+  url: string;
+  form: URLSearchParams;
+  configDir: string;
+  profile: string;
+}): Promise<unknown> {
+  const headers = await authHeaders(params.configDir, params.profile);
+  const res = await fetch(params.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...headers,
+    },
+    body: params.form,
+  });
+
+  if (!res.ok) {
+    throw new CliError(`Withings request failed (${res.status}): ${await res.text()}`, 4);
+  }
+
+  return res.json();
 }

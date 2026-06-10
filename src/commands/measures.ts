@@ -1,8 +1,9 @@
 import { define } from "gunshi";
-import { fetchMeasures, parseUnixSeconds } from "../api/measures.ts";
+import { fetchMeasures } from "../api/measures.ts";
 import { configDir } from "../config/config.ts";
 import { globalArgs } from "../global-args.ts";
 import { outputFormat, printJson, printRows } from "../output.ts";
+import { parseUnixSeconds } from "./date-query.ts";
 
 const measureArgs = {
   ...globalArgs,
@@ -42,7 +43,7 @@ export const measuresCommand = define({
     });
 
     if (outputFormat(ctx.values.format) === "json") {
-      printJson(result);
+      printJson({ measures: result.measures, pages: result.pages });
       return;
     }
 
@@ -50,7 +51,9 @@ export const measuresCommand = define({
       result.measures.map((measure) => ({
         date: measure.date,
         weightKg: measure.weightKg,
+        fatFreeMassKg: measure.fatFreeMassKg,
         fatRatioPercent: measure.fatRatioPercent,
+        fatMassKg: measure.fatMassKg,
         muscleMassKg: measure.muscleMassKg,
         hydrationKg: measure.hydrationKg,
         boneMassKg: measure.boneMassKg,

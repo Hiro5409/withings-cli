@@ -28,7 +28,9 @@ export const latestCommand = define({
       {
         date: latest.date,
         weightKg: latest.weightKg,
+        fatFreeMassKg: latest.fatFreeMassKg,
         fatRatioPercent: latest.fatRatioPercent,
+        fatMassKg: latest.fatMassKg,
         muscleMassKg: latest.muscleMassKg,
         hydrationKg: latest.hydrationKg,
         boneMassKg: latest.boneMassKg,

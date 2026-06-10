@@ -3,12 +3,15 @@ import { join } from "node:path";
 import { ConfigError } from "../errors.ts";
 
 export type TokenSet = {
+  userid?: number;
   clientId: string;
   clientSecret: string;
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
   scope?: string;
+  tokenType?: string;
+  csrfToken?: string;
 };
 
 export type Credentials = Record<string, TokenSet>;
@@ -26,7 +29,10 @@ function isTokenSet(value: unknown): value is TokenSet {
     typeof candidate.accessToken === "string" &&
     typeof candidate.refreshToken === "string" &&
     typeof candidate.expiresAt === "number" &&
-    (candidate.scope === undefined || typeof candidate.scope === "string")
+    (candidate.userid === undefined || typeof candidate.userid === "number") &&
+    (candidate.scope === undefined || typeof candidate.scope === "string") &&
+    (candidate.tokenType === undefined || typeof candidate.tokenType === "string") &&
+    (candidate.csrfToken === undefined || typeof candidate.csrfToken === "string")
   );
 }
 

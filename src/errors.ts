@@ -1,17 +1,29 @@
 export class CliError extends Error {
   readonly exitCode: number;
+  readonly code?: string;
+  readonly details?: Record<string, unknown>;
   readonly why?: string;
   readonly hint?: string;
 
   constructor(
     message: string,
-    exitCodeOrOptions: number | { exitCode?: number; why?: string; hint?: string } = 1,
+    exitCodeOrOptions:
+      | number
+      | {
+          exitCode?: number;
+          code?: string;
+          details?: Record<string, unknown>;
+          why?: string;
+          hint?: string;
+        } = 1,
   ) {
     super(message);
     this.name = "CliError";
     const options =
       typeof exitCodeOrOptions === "number" ? { exitCode: exitCodeOrOptions } : exitCodeOrOptions;
     this.exitCode = options.exitCode ?? 1;
+    this.code = options.code;
+    this.details = options.details;
     this.why = options.why;
     this.hint = options.hint;
   }

@@ -1,14 +1,16 @@
-import { AuthError, CliError } from "../errors.ts";
-import { measureGetmeas } from "../types/withings/sdk.gen.ts";
-import type {
-  MeasureGetmeasResponse,
-  MeasureGetmeasResponses,
-  MeasuregrpObject,
-  MeasureObject,
-} from "../types/withings/types.gen.ts";
-import { authHeaders } from "./client.ts";
+import { postWithingsForm } from "./client.ts";
+import {
+  hasMore,
+  isObject,
+  moreOrUndefined,
+  numberOrUndefined,
+  parseOffset,
+  stringOrUndefined,
+  type WithingsMore,
+} from "./parse.ts";
+import { assertWithingsOk } from "./withings-error.ts";
 
-const TRACKED_MEASURE_TYPES = [1, 6, 76, 77, 88] as const;
+const TRACKED_MEASURE_TYPES = [1, 5, 6, 8, 76, 77, 88] as const;
 const TRACKED_MEASURE_TYPES_PARAM = TRACKED_MEASURE_TYPES.join(",");
 
 type MeasureQuery = {
@@ -16,6 +18,16 @@ type MeasureQuery = {
   enddate?: number;
   lastupdate?: number;
   limit?: number;
+};
+
+// Wire shapes for measure.getmeas, hand-written from the Withings API
+// reference (https://developer.withings.com/api-reference/#tag/measure).
+// Responses are parsed, never asserted: every field below is proven by a
+// runtime check before use, and unrecognized data is kept in `raw`.
+type MeasureValue = {
+  type: number;
+  value: number;
+  unit: number;
 };
 
 export type NormalizedMeasureGroup = {
@@ -26,49 +38,50 @@ export type NormalizedMeasureGroup = {
   attrib?: number;
   deviceid?: string;
   weightKg?: number;
+  fatFreeMassKg?: number;
   fatRatioPercent?: number;
+  fatMassKg?: number;
   muscleMassKg?: number;
   hydrationKg?: number;
   boneMassKg?: number;
-  raw: MeasuregrpObject;
+  raw: unknown;
 };
 
-function withingsValue(measure: MeasureObject): number | undefined {
-  if (typeof measure.value !== "number" || typeof measure.unit !== "number") return undefined;
-  return measure.value * 10 ** measure.unit;
+function parseMeasureValue(value: unknown): MeasureValue | undefined {
+  if (!isObject(value)) return undefined;
+  if (
+    typeof value.type !== "number" ||
+    typeof value.value !== "number" ||
+    typeof value.unit !== "number"
+  ) {
+    return undefined;
+  }
+  return { type: value.type, value: value.value, unit: value.unit };
 }
 
-function parseWithingsStatus(response: MeasureGetmeasResponse): void {
-  if (response.status === 0 || response.status === undefined) return;
-  throw new CliError(`Withings API returned status ${response.status}.`, {
-    exitCode: 4,
-    why: "The HTTP request succeeded, but the Withings API reported an application error.",
-  });
-}
+export function normalizeMeasureGroup(group: unknown): NormalizedMeasureGroup {
+  const fields = isObject(group) ? group : {};
+  const timestamp = numberOrUndefined(fields.date);
 
-function responseBody(
-  response: MeasureGetmeasResponse,
-): NonNullable<MeasureGetmeasResponse["body"]> {
-  parseWithingsStatus(response);
-  return response.body ?? {};
-}
-
-export function normalizeMeasureGroup(group: MeasuregrpObject): NormalizedMeasureGroup {
   const normalized: NormalizedMeasureGroup = {
-    grpid: group.grpid,
-    timestamp: group.date,
-    date: typeof group.date === "number" ? new Date(group.date * 1000).toISOString() : undefined,
-    category: group.category,
-    attrib: group.attrib,
-    deviceid: group.deviceid,
+    grpid: numberOrUndefined(fields.grpid),
+    timestamp,
+    date: timestamp === undefined ? undefined : new Date(timestamp * 1000).toISOString(),
+    category: numberOrUndefined(fields.category),
+    attrib: numberOrUndefined(fields.attrib),
+    deviceid: stringOrUndefined(fields.deviceid),
     raw: group,
   };
 
-  for (const measure of group.measures ?? []) {
-    const value = withingsValue(measure);
-    if (value === undefined) continue;
+  const entries = Array.isArray(fields.measures) ? fields.measures : [];
+  for (const entry of entries) {
+    const measure = parseMeasureValue(entry);
+    if (!measure) continue;
+    const value = measure.value * 10 ** measure.unit;
     if (measure.type === 1) normalized.weightKg = value;
+    if (measure.type === 5) normalized.fatFreeMassKg = value;
     if (measure.type === 6) normalized.fatRatioPercent = value;
+    if (measure.type === 8) normalized.fatMassKg = value;
     if (measure.type === 76) normalized.muscleMassKg = value;
     if (measure.type === 77) normalized.hydrationKg = value;
     if (measure.type === 88) normalized.boneMassKg = value;
@@ -77,26 +90,53 @@ export function normalizeMeasureGroup(group: MeasuregrpObject): NormalizedMeasur
   return normalized;
 }
 
+type GetmeasPage = {
+  measuregrps: unknown[];
+  more?: WithingsMore;
+  offset?: number;
+  raw: unknown;
+};
+
+function parseGetmeasPage(value: unknown): GetmeasPage {
+  const root = isObject(value) ? value : {};
+  assertWithingsOk(
+    { status: numberOrUndefined(root.status), body: root.body },
+    { service: "measure", action: "getmeas" },
+  );
+
+  const body = isObject(root.body) ? root.body : {};
+  return {
+    measuregrps: Array.isArray(body.measuregrps) ? body.measuregrps : [],
+    more: moreOrUndefined(body.more),
+    offset: parseOffset(body.offset),
+    raw: value,
+  };
+}
+
 async function getMeasuresPage(params: {
   configDir: string;
   profile: string;
   query: MeasureQuery;
   offset?: number;
-}): Promise<MeasureGetmeasResponses[200]> {
-  const headers = await authHeaders(params.configDir, params.profile);
-  const result = await measureGetmeas({
-    headers,
-    query: {
-      action: "getmeas",
-      category: 1,
-      meastypes: TRACKED_MEASURE_TYPES_PARAM,
-      startdate: params.query.startdate,
-      enddate: params.query.enddate,
-      lastupdate: params.query.lastupdate,
-      offset: params.offset,
-    },
+}): Promise<GetmeasPage> {
+  const form = new URLSearchParams({
+    action: "getmeas",
+    category: "1",
+    meastypes: TRACKED_MEASURE_TYPES_PARAM,
   });
-  return result.data;
+  if (params.query.startdate !== undefined) form.set("startdate", String(params.query.startdate));
+  if (params.query.enddate !== undefined) form.set("enddate", String(params.query.enddate));
+  if (params.query.lastupdate !== undefined)
+    form.set("lastupdate", String(params.query.lastupdate));
+  if (params.offset !== undefined) form.set("offset", String(params.offset));
+
+  const response = await postWithingsForm({
+    url: "https://wbsapi.withings.net/measure",
+    form,
+    configDir: params.configDir,
+    profile: params.profile,
+  });
+  return parseGetmeasPage(response);
 }
 
 export async function fetchMeasures(params: {
@@ -106,27 +146,25 @@ export async function fetchMeasures(params: {
 }): Promise<{
   measures: NormalizedMeasureGroup[];
   pages: number;
-  raw: MeasureGetmeasResponses[200][];
+  raw: unknown[];
 }> {
-  const rawPages: MeasureGetmeasResponses[200][] = [];
-  const groups: MeasuregrpObject[] = [];
+  const rawPages: unknown[] = [];
+  const groups: unknown[] = [];
   let offset: number | undefined;
 
   for (let page = 0; page < 100; page += 1) {
-    const response = await getMeasuresPage({
+    const result = await getMeasuresPage({
       configDir: params.configDir,
       profile: params.profile,
       query: params.query,
       offset,
     });
-    rawPages.push(response);
-
-    const body = responseBody(response);
-    groups.push(...(body.measuregrps ?? []));
+    rawPages.push(result.raw);
+    groups.push(...result.measuregrps);
 
     if (params.query.limit && groups.length >= params.query.limit) break;
-    if (body.more !== 1 || typeof body.offset !== "number") break;
-    offset = body.offset;
+    if (!hasMore(result.more) || result.offset === undefined) break;
+    offset = result.offset;
   }
 
   return {
@@ -146,18 +184,4 @@ export async function fetchLatestMeasure(params: {
     query: { limit: 1 },
   });
   return result.measures[0];
-}
-
-export function parseUnixSeconds(value: unknown, name: string): number | undefined {
-  if (value === undefined) return undefined;
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new CliError(`${name} must be a non-negative unix timestamp in seconds.`);
-  }
-  return parsed;
-}
-
-export function requireAuthenticated(error: unknown): never {
-  if (error instanceof AuthError) throw error;
-  throw error;
 }

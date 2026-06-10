@@ -4,9 +4,8 @@ try {
   const { main } = await import("./cli.ts");
   await main();
 } catch (e) {
-  const { errorExitCode, formatFromArgv, printError, wasErrorPrinted } = await import(
-    "./error-output.ts"
-  );
+  const { errorExitCode, formatFromArgv, printError, wasErrorPrinted } =
+    await import("./error-output.ts");
 
   if (wasErrorPrinted(e)) {
     process.exitCode = errorExitCode(e);

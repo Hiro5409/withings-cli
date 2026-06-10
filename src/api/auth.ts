@@ -1,29 +1,42 @@
-import { randomBytes } from "node:crypto";
 import type { TokenSet } from "../config/credentials.ts";
 import { loadCredentials, saveCredentials } from "../config/credentials.ts";
 import { AuthError } from "../errors.ts";
 
 const WITHINGS_AUTH_BASE = "https://account.withings.com";
+const WITHINGS_API_BASE = "https://wbsapi.withings.net";
 const AUTHORIZE_PATH = "/oauth2_user/authorize2";
-const TOKEN_PATH = "/oauth2_user/token";
+const TOKEN_PATH = "/v2/oauth2";
 
 export const CALLBACK_PORT = 8765;
 export const CALLBACK_PATH = "/auth/withings/callback";
-export const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
+const REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
 export const DEFAULT_SCOPE = "user.metrics";
 
 type TokenEndpointResponse = {
+  userid?: number;
   access_token: string;
   refresh_token: string;
   expires_in: number;
   scope?: string;
+  csrf_token?: string;
+  token_type?: string;
 };
 
 function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
   if (!value || typeof value !== "object") {
     throw new AuthError("Token endpoint returned a non-object response.");
   }
-  const data = value as Record<string, unknown>;
+
+  const envelope = value as Record<string, unknown>;
+  if (typeof envelope.status === "number" && envelope.status !== 0) {
+    throw new AuthError(`Token endpoint returned Withings status ${envelope.status}.`);
+  }
+
+  const data =
+    envelope.body && typeof envelope.body === "object"
+      ? (envelope.body as Record<string, unknown>)
+      : envelope;
+
   if (
     typeof data.access_token !== "string" ||
     typeof data.refresh_token !== "string" ||
@@ -34,10 +47,13 @@ function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
     );
   }
   return {
+    userid: typeof data.userid === "number" ? data.userid : undefined,
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_in: data.expires_in,
     scope: typeof data.scope === "string" ? data.scope : undefined,
+    csrf_token: typeof data.csrf_token === "string" ? data.csrf_token : undefined,
+    token_type: typeof data.token_type === "string" ? data.token_type : undefined,
   };
 }
 
@@ -56,7 +72,7 @@ export function buildAuthorizationUrl(params: {
 }
 
 async function postTokenEndpoint(body: Record<string, string>): Promise<TokenEndpointResponse> {
-  const res = await fetch(`${WITHINGS_AUTH_BASE}${TOKEN_PATH}`, {
+  const res = await fetch(`${WITHINGS_API_BASE}${TOKEN_PATH}`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(body),
@@ -85,12 +101,15 @@ export async function exchangeCodeForToken(params: {
   });
 
   return {
+    userid: data.userid,
     clientId: params.clientId,
     clientSecret: params.clientSecret,
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: Date.now() + data.expires_in * 1000,
     scope: data.scope,
+    tokenType: data.token_type,
+    csrfToken: data.csrf_token,
   };
 }
 
@@ -109,6 +128,8 @@ export async function refreshAccessToken(tokenSet: TokenSet): Promise<TokenSet> 
     refreshToken: data.refresh_token,
     expiresAt: Date.now() + data.expires_in * 1000,
     scope: data.scope ?? tokenSet.scope,
+    tokenType: data.token_type ?? tokenSet.tokenType,
+    csrfToken: data.csrf_token ?? tokenSet.csrfToken,
   };
 }
 
@@ -126,5 +147,5 @@ export function getTokenStatus(tokenSet: TokenSet): { isValid: boolean; expiresA
 }
 
 export function generateState(): string {
-  return randomBytes(16).toString("hex");
+  return crypto.randomUUID();
 }

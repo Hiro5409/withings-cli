@@ -71,11 +71,10 @@ function waitForCallback(expectedState: string): Promise<{ code: string }> {
         const code = url.searchParams.get("code");
         const returnedState = url.searchParams.get("state");
 
+        // Keep waiting for the legitimate callback: a stray or forged request
+        // (wrong state) must not be able to abort the login flow.
         if (returnedState !== expectedState) {
-          clearTimeout(timeout);
-          server.stop();
-          reject(new Error("State mismatch; authentication failed."));
-          return new Response("State mismatch. Authentication failed.", { status: 400 });
+          return new Response("State mismatch. Request ignored.", { status: 400 });
         }
 
         if (!code) {

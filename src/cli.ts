@@ -3,9 +3,12 @@ import { renderHeader } from "gunshi/renderer";
 import { loginCommand } from "./commands/auth/login.ts";
 import { logoutCommand } from "./commands/auth/logout.ts";
 import { statusCommand } from "./commands/auth/status.ts";
+import { activityCommand } from "./commands/activity.ts";
 import { latestCommand } from "./commands/latest.ts";
 import { measuresCommand } from "./commands/measures.ts";
-import { rawMeasureGetmeasCommand } from "./commands/raw.ts";
+import { notifyCommand } from "./commands/notify.ts";
+import { rawCommand, rawMeasureGetmeasCommand } from "./commands/raw.ts";
+import { sleepCommand } from "./commands/sleep.ts";
 import { printError } from "./error-output.ts";
 import { globalArgs } from "./global-args.ts";
 
@@ -30,13 +33,11 @@ export async function main() {
       status: statusCommand,
       measures: measuresCommand,
       latest: latestCommand,
+      activity: activityCommand,
+      sleep: sleepCommand,
+      notify: notifyCommand,
       raw: define({
-        name: "raw",
-        description: "Raw Withings API commands",
-        args: globalArgs,
-        run: () => {
-          console.log('Run "withings raw --help" for usage information.');
-        },
+        ...rawCommand,
         subCommands: {
           "measure-getmeas": rawMeasureGetmeasCommand,
         },
