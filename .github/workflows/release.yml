@@ -65,7 +65,8 @@ jobs:
           tag="v$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: bearer $GH_TOKEN" push origin "HEAD:main" "refs/tags/$tag"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin "HEAD:main" "refs/tags/$tag"
       - env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
