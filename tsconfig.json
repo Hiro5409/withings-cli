@@ -5,11 +5,11 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
-    "types": ["bun-types"],
+    "types": ["bun"],
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "openapi-ts.config.ts"]
+  "include": ["src/**/*.ts"]
 }

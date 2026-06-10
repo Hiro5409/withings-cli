@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: bun run lint
+    typecheck:
+      run: bun run typecheck
+    test:
+      run: bun test
+    knip:
+      run: bun run knip
+    secrets:
+      run: gitleaks git --pre-commit --staged --no-banner --redact

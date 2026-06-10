@@ -2,37 +2,56 @@
   "name": "withings-cli",
   "version": "0.1.0",
   "description": "Thin local-first CLI for the Withings Public API.",
-  "type": "module",
+  "keywords": [
+    "bun",
+    "cli",
+    "health",
+    "oauth2",
+    "withings"
+  ],
+  "homepage": "https://github.com/Hiro5409/withings-cli#readme",
+  "bugs": {
+    "url": "https://github.com/Hiro5409/withings-cli/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hiro5409/withings-cli.git"
+  },
   "bin": {
     "withings": "bin/withings"
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "!src/**/*.test.ts"
   ],
+  "type": "module",
   "scripts": {
     "dev": "bun run src/main.ts",
     "build": "bun build src/main.ts --compile --outfile withings",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "test": "bun test",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "generate-types": "openapi-ts"
+    "lint": "oxlint && oxfmt --check",
+    "format": "oxfmt",
+    "knip": "knip",
+    "audit": "bun audit",
+    "secrets": "gitleaks git --no-banner --redact .",
+    "prepublishOnly": "bun run typecheck && bun run lint && bun run knip && bun test"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Hiro5409/withings-cli"
-  },
-  "license": "MIT",
   "dependencies": {
     "gunshi": "^0.29.3",
     "yoctocolors": "^2.1.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.7",
-    "@hey-api/client-fetch": "^0.13.1",
-    "@hey-api/openapi-ts": "^0.98.2",
     "@types/bun": "latest",
-    "typescript": "^5.9.3"
+    "@typescript/native-preview": "^7.0.0-dev.20260610.1",
+    "knip": "^6.16.1",
+    "lefthook": "^2.1.9",
+    "oxfmt": "^0.54.0",
+    "oxlint": "^1.69.0"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
   }
 }

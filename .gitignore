@@ -1,2 +1,5 @@
 node_modules/
 /withings
+.env
+.env.*
+!.env.example
