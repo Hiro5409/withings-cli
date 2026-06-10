@@ -1,5 +1,5 @@
 import type { TokenSet } from "../config/credentials.ts";
-import { loadCredentials, saveCredentials } from "../config/credentials.ts";
+import { loadCredentials, saveCredentials, withCredentialsLock } from "../config/credentials.ts";
 import { AuthError, CliError } from "../errors.ts";
 import { getTokenStatus, refreshAccessToken } from "./auth.ts";
 
@@ -13,10 +13,21 @@ async function ensureValidToken(configDir: string, profile: string): Promise<Tok
 
   if (getTokenStatus(tokenSet).isValid) return tokenSet;
 
-  const refreshed = await refreshAccessToken(tokenSet);
-  creds[profile] = refreshed;
-  saveCredentials(configDir, creds);
-  return refreshed;
+  return withCredentialsLock(configDir, async () => {
+    const lockedCreds = loadCredentials(configDir);
+    const lockedTokenSet = lockedCreds[profile];
+
+    if (!lockedTokenSet) {
+      throw new AuthError(`No credentials for profile "${profile}". Run "withings login" first.`);
+    }
+
+    if (getTokenStatus(lockedTokenSet).isValid) return lockedTokenSet;
+
+    const refreshed = await refreshAccessToken(lockedTokenSet);
+    lockedCreds[profile] = refreshed;
+    saveCredentials(configDir, lockedCreds);
+    return refreshed;
+  });
 }
 
 async function authHeaders(configDir: string, profile: string): Promise<{ Authorization: string }> {
