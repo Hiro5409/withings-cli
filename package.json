@@ -1,0 +1,38 @@
+{
+  "name": "withings-cli",
+  "version": "0.1.0",
+  "description": "Thin local-first CLI for the Withings Public API.",
+  "type": "module",
+  "bin": {
+    "withings": "bin/withings"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "dev": "bun run src/main.ts",
+    "build": "bun build src/main.ts --compile --outfile withings",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "generate-types": "openapi-ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hiro5409/withings-cli"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "gunshi": "^0.29.3",
+    "yoctocolors": "^2.1.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.7",
+    "@hey-api/client-fetch": "^0.13.1",
+    "@hey-api/openapi-ts": "^0.98.2",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}
