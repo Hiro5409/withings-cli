@@ -46,22 +46,27 @@
     "lint": "oxlint && oxfmt --check",
     "format": "oxfmt",
     "knip": "knip",
+    "publint": "publint run --pack bun",
+    "attw": "attw --pack --profile esm-only .",
+    "check:package": "bun run build:lib && bun run publint && bun run attw",
     "audit": "bun audit",
     "secrets": "gitleaks git --no-banner --redact .",
     "prepare": "bun run build:lib",
-    "prepublishOnly": "bun run build:lib && bun run typecheck && bun run lint && bun run knip && bun test"
+    "prepublishOnly": "bun run typecheck && bun run lint && bun run knip && bun test && bun run check:package"
   },
   "dependencies": {
     "gunshi": "^0.32.0",
     "yoctocolors": "^2.1.2"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.3",
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260610.1",
     "knip": "^6.16.1",
     "lefthook": "^2.1.9",
     "oxfmt": "^0.54.0",
-    "oxlint": "^1.69.0"
+    "oxlint": "^1.69.0",
+    "publint": "^0.3.21"
   },
   "engines": {
     "bun": ">=1.2.0"
