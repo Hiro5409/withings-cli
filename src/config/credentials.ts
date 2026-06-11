@@ -12,6 +12,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import type { TokenSet } from "../api/client.js";
+import { isObject } from "../api/parse.js";
 import { ConfigError } from "../errors.js";
 
 export type Credentials = Record<string, TokenSet>;
@@ -38,8 +39,8 @@ function prepareCredentialsDir(dir: string): void {
 }
 
 function isTokenSet(value: unknown): value is TokenSet {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
+  if (!isObject(value)) return false;
+  const candidate = value;
   return (
     typeof candidate.clientId === "string" &&
     typeof candidate.clientSecret === "string" &&

@@ -1,4 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["spec/**"]
+  "ignorePatterns": ["spec/**"],
+  "rules": {
+    "typescript/no-explicit-any": "deny"
+  }
 }

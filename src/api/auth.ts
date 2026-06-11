@@ -1,5 +1,6 @@
 import type { TokenSet } from "./client.js";
 import { AuthError } from "../errors.js";
+import { isObject } from "./parse.js";
 
 const WITHINGS_AUTH_BASE = "https://account.withings.com";
 const WITHINGS_API_BASE = "https://wbsapi.withings.net";
@@ -22,19 +23,16 @@ type TokenEndpointResponse = {
 };
 
 function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
-  if (!value || typeof value !== "object") {
+  if (!isObject(value)) {
     throw new AuthError("Token endpoint returned a non-object response.");
   }
 
-  const envelope = value as Record<string, unknown>;
+  const envelope = value;
   if (typeof envelope.status === "number" && envelope.status !== 0) {
     throw new AuthError(`Token endpoint returned Withings status ${envelope.status}.`);
   }
 
-  const data =
-    envelope.body && typeof envelope.body === "object"
-      ? (envelope.body as Record<string, unknown>)
-      : envelope;
+  const data = isObject(envelope.body) ? envelope.body : envelope;
 
   if (
     typeof data.access_token !== "string" ||

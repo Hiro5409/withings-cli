@@ -13,5 +13,3 @@ try {
     process.exitCode = printError(e, formatFromArgv(process.argv.slice(2)));
   }
 }
-
-export {};
