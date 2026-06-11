@@ -52,7 +52,7 @@
     "prepublishOnly": "bun run build:lib && bun run typecheck && bun run lint && bun run knip && bun test"
   },
   "dependencies": {
-    "gunshi": "^0.29.3",
+    "gunshi": "^0.32.0",
     "yoctocolors": "^2.1.2"
   },
   "devDependencies": {
