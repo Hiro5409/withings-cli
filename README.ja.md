@@ -74,36 +74,6 @@ bun run build
 ./withings --help
 ```
 
-## Library Use
-
-root export から小さな library surface も利用できます:
-
-```ts
-import { createWithingsClient, type TokenSet, type TokenStore } from "withings-cli";
-
-// この最小 KV store は、たとえば 1 つの Durable Object instance 内など、
-// 呼び出しがすでに直列化されている場合に安全です。
-function kvTokenStore(kv: KVNamespace, key = "withings:tokens"): TokenStore {
-  return {
-    async load(): Promise<TokenSet | undefined> {
-      const value = await kv.get<TokenSet>(key, "json");
-      return value ?? undefined;
-    },
-    async save(tokenSet: TokenSet): Promise<void> {
-      await kv.put(key, JSON.stringify(tokenSet));
-    },
-  };
-}
-
-const client = createWithingsClient({ store: kvTokenStore(env.WITHINGS_KV) });
-const latest = await client.fetchLatestMeasure();
-```
-
-Withings の refresh token はローテーションされます。同じ token を複数リクエストが
-同時に refresh しうる場合は、`TokenStore` 実装側の `withRefreshLock` で
-load -> refresh -> save 全体を Durable Object、D1 transaction、その他の lock により
-直列化してください。
-
 ## Usage
 
 ```bash
@@ -257,6 +227,44 @@ JSON 引数を省略した場合は stdin JSON も受け付けます。旧
   "hint": "user.get is restricted to account-creation integrations such as Withings Cellular Solutions or Mobile SDK. For this OAuth app, use user.getdevice or user.getgoals."
 }
 ```
+
+## Library Use
+
+root export から小さな library surface も利用できます。CLI を shell out せず、
+自分のアプリから Withings を直接呼びたい場合向けです。
+
+client が必要とするのは `TokenStore` だけなので、保存先はアプリ側で選べます。
+下の例は Cloudflare Workers KV を使っています。Cloudflare 以外では、自分の
+database、Redis、SQLite、その他の永続 store で `TokenStore` を実装してください。
+
+`TokenSet` には OAuth client credentials と access/refresh token が含まれるため、
+保存先はそれに見合う形で保護してください。
+
+```ts
+import { createWithingsClient, type TokenSet, type TokenStore } from "withings-cli";
+
+// この最小 KV store は、たとえば 1 つの Durable Object instance 内など、
+// 呼び出しがすでに直列化されている場合に安全です。
+function kvTokenStore(kv: KVNamespace, key = "withings:tokens"): TokenStore {
+  return {
+    async load(): Promise<TokenSet | undefined> {
+      const value = await kv.get<TokenSet>(key, "json");
+      return value ?? undefined;
+    },
+    async save(tokenSet: TokenSet): Promise<void> {
+      await kv.put(key, JSON.stringify(tokenSet));
+    },
+  };
+}
+
+const client = createWithingsClient({ store: kvTokenStore(env.WITHINGS_KV) });
+const latest = await client.fetchLatestMeasure();
+```
+
+Withings の refresh token はローテーションされます。同じ token を複数リクエストが
+同時に refresh しうる場合は、`TokenStore` 実装側の `withRefreshLock` で
+load -> refresh -> save 全体を Durable Object、D1 transaction、その他の lock により
+直列化してください。
 
 ## Development
 

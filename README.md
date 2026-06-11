@@ -73,36 +73,6 @@ bun run build
 ./withings --help
 ```
 
-## Library Use
-
-The package also exposes a small library surface from the root export:
-
-```ts
-import { createWithingsClient, type TokenSet, type TokenStore } from "withings-cli";
-
-// This minimal KV store is safe when calls are already serialized, for example
-// inside one Durable Object instance.
-function kvTokenStore(kv: KVNamespace, key = "withings:tokens"): TokenStore {
-  return {
-    async load(): Promise<TokenSet | undefined> {
-      const value = await kv.get<TokenSet>(key, "json");
-      return value ?? undefined;
-    },
-    async save(tokenSet: TokenSet): Promise<void> {
-      await kv.put(key, JSON.stringify(tokenSet));
-    },
-  };
-}
-
-const client = createWithingsClient({ store: kvTokenStore(env.WITHINGS_KV) });
-const latest = await client.fetchLatestMeasure();
-```
-
-Withings refresh tokens rotate. If multiple requests can refresh the same
-token concurrently, serialize refreshes in your `TokenStore` implementation
-with `withRefreshLock`, using a Durable Object, D1 transaction, or another lock
-that owns the full load -> refresh -> save sequence.
-
 ## Usage
 
 ```bash
@@ -252,6 +222,45 @@ JSON. Withings API status errors include fields agents can branch on:
   "hint": "user.get is restricted to account-creation integrations such as Withings Cellular Solutions or Mobile SDK. For this OAuth app, use user.getdevice or user.getgoals."
 }
 ```
+
+## Library Use
+
+The package also exposes a small library surface from the root export. Use it
+when your app wants to call Withings directly instead of shelling out to the
+CLI.
+
+The client only needs a `TokenStore`, so storage is app-owned. The example below
+uses Cloudflare Workers KV; in another runtime, use your database, Redis,
+SQLite, or other persistent store instead.
+
+A `TokenSet` includes OAuth client credentials and access/refresh tokens, so
+protect the store accordingly.
+
+```ts
+import { createWithingsClient, type TokenSet, type TokenStore } from "withings-cli";
+
+// This minimal KV store is safe when calls are already serialized, for example
+// inside one Durable Object instance.
+function kvTokenStore(kv: KVNamespace, key = "withings:tokens"): TokenStore {
+  return {
+    async load(): Promise<TokenSet | undefined> {
+      const value = await kv.get<TokenSet>(key, "json");
+      return value ?? undefined;
+    },
+    async save(tokenSet: TokenSet): Promise<void> {
+      await kv.put(key, JSON.stringify(tokenSet));
+    },
+  };
+}
+
+const client = createWithingsClient({ store: kvTokenStore(env.WITHINGS_KV) });
+const latest = await client.fetchLatestMeasure();
+```
+
+Withings refresh tokens rotate. If multiple requests can refresh the same
+token concurrently, serialize refreshes in your `TokenStore` implementation
+with `withRefreshLock`, using a Durable Object, D1 transaction, or another lock
+that owns the full load -> refresh -> save sequence.
 
 ## Development
 
