@@ -195,6 +195,13 @@ withings notify revoke --callbackurl https://example.com/hook
 | `16`  | アクティビティ |
 | `44`  | 睡眠           |
 
+library consumer は form-encoded のコールバック payload を
+`parseNotificationPayload` で parse し、共通フィールドを正規化できます。この
+package は webhook server、queue、storage layer、retry/idempotency policy は
+提供しません。
+webhook receiver の中で parser を呼ぶ場合、不正 payload の error は receiver 側で
+catch し、そのアプリケーションの HTTP response policy として扱ってください。
+
 ### Raw API
 
 ```bash

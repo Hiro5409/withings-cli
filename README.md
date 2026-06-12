@@ -191,6 +191,12 @@ Common `--appli` notification categories:
 | `16`  | Activity                    |
 | `44`  | Sleep                       |
 
+Library consumers can parse the form-encoded callback payload and normalize
+common fields with `parseNotificationPayload`. This package does not provide a
+webhook server, queue, storage layer, or retry/idempotency policy.
+If you call the parser inside a webhook receiver, catch invalid payload errors
+there and decide the HTTP response policy in that application.
+
 ### Raw API
 
 ```bash

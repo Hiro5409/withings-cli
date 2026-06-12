@@ -15,8 +15,10 @@ import {
 } from "./api/measures.js";
 import {
   listNotifications,
+  parseNotificationPayload,
   revokeNotification,
   subscribeNotification,
+  type WithingsNotification,
   type NotifySubscription,
 } from "./api/notify.js";
 import { callRawWithings } from "./api/raw.js";
@@ -33,12 +35,13 @@ export {
   getTokenStatus,
   listNotifications,
   normalizeMeasureGroup,
+  parseNotificationPayload,
   refreshAccessToken,
   revokeNotification,
   subscribeNotification,
 };
 export type { TokenSet, TokenStore } from "./api/client.js";
-export type { ActivityQuery, MeasureQuery, NotifySubscription, SleepQuery };
+export type { ActivityQuery, MeasureQuery, NotifySubscription, SleepQuery, WithingsNotification };
 
 export function createWithingsClient(params: { store: TokenStore }) {
   const { store } = params;
