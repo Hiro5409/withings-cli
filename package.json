@@ -1,6 +1,6 @@
 {
   "name": "withings-cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Thin local-first CLI for the Withings Public API.",
   "keywords": [
     "bun",
