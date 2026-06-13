@@ -50,6 +50,30 @@ test("exchangeCodeForToken normalizes a string userid from the token endpoint", 
   expect(tokenSet.userid).toBe(123);
 });
 
+test("exchangeCodeForToken accepts a direct token response without a Withings envelope", async () => {
+  globalThis.fetch = (async (input, init) => {
+    expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
+    expect(init?.method).toBe("POST");
+    return jsonResponse({
+      userid: "123",
+      access_token: "access",
+      refresh_token: "refresh",
+      expires_in: 3600,
+    });
+  }) as typeof fetch;
+
+  const tokenSet = await exchangeCodeForToken({
+    clientId: "client",
+    clientSecret: "secret",
+    code: "code",
+    redirectUri: "http://localhost/callback",
+  });
+
+  expect(tokenSet.userid).toBe(123);
+  expect(tokenSet.accessToken).toBe("access");
+  expect(tokenSet.refreshToken).toBe("refresh");
+});
+
 test("refreshAccessToken backfills userid when the refresh response includes it", async () => {
   globalThis.fetch = (async (input, init) => {
     expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
