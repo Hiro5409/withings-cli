@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { hasMore, isoFromUnixSeconds, minutesFromSeconds, parseOffset } from "./parse.js";
+import {
+  hasMore,
+  integerOrUndefined,
+  isoFromUnixSeconds,
+  minutesFromSeconds,
+  parseOffset,
+} from "./parse.js";
 
 test("parses Withings pagination offsets", () => {
   expect(parseOffset(200)).toBe(200);
@@ -14,6 +20,14 @@ test("normalizes Withings more flags", () => {
   expect(hasMore(false)).toBe(false);
   expect(hasMore(0)).toBe(false);
   expect(hasMore("1")).toBe(false);
+});
+
+test("parses integer fields that may arrive as numeric strings", () => {
+  expect(integerOrUndefined(123)).toBe(123);
+  expect(integerOrUndefined("456")).toBe(456);
+  expect(integerOrUndefined("4.5")).toBeUndefined();
+  expect(integerOrUndefined(4.5)).toBeUndefined();
+  expect(integerOrUndefined("abc")).toBeUndefined();
 });
 
 test("converts common Withings scalar values", () => {

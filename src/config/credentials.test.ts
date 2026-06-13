@@ -51,6 +51,30 @@ test("saveCredentials enforces private file and directory modes", () => {
   expect(loadCredentials(dir).default?.refreshToken).toBe("refresh");
 });
 
+test("loadCredentials normalizes a numeric string userid", () => {
+  const dir = tempConfigDir();
+  saveCredentials(dir, {});
+  writeFileSync(
+    join(dir, "credentials.json"),
+    `${JSON.stringify(
+      {
+        default: {
+          userid: "123",
+          clientId: "client",
+          clientSecret: "secret",
+          accessToken: "access",
+          refreshToken: "refresh",
+          expiresAt: 1,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  expect(loadCredentials(dir).default?.userid).toBe(123);
+});
+
 test("saveCredentials refuses to replace a symlinked credentials file", () => {
   const dir = tempConfigDir();
   const target = join(dir, "target.json");

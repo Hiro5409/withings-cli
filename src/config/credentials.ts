@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import type { TokenSet } from "../api/client.js";
-import { isObject } from "../api/parse.js";
+import { integerOrUndefined, isObject } from "../api/parse.js";
 import { ConfigError } from "../errors.js";
 
 export type Credentials = Record<string, TokenSet>;
@@ -38,20 +38,34 @@ function prepareCredentialsDir(dir: string): void {
   chmodSync(dir, 0o700);
 }
 
-function isTokenSet(value: unknown): value is TokenSet {
-  if (!isObject(value)) return false;
+function normalizeTokenSet(value: unknown): TokenSet | undefined {
+  if (!isObject(value)) return undefined;
   const candidate = value;
-  return (
+  const userid = integerOrUndefined(candidate.userid);
+  if (
     typeof candidate.clientId === "string" &&
     typeof candidate.clientSecret === "string" &&
     typeof candidate.accessToken === "string" &&
     typeof candidate.refreshToken === "string" &&
     typeof candidate.expiresAt === "number" &&
-    (candidate.userid === undefined || typeof candidate.userid === "number") &&
+    (candidate.userid === undefined || userid !== undefined) &&
     (candidate.scope === undefined || typeof candidate.scope === "string") &&
     (candidate.tokenType === undefined || typeof candidate.tokenType === "string") &&
     (candidate.csrfToken === undefined || typeof candidate.csrfToken === "string")
-  );
+  ) {
+    return {
+      clientId: candidate.clientId,
+      clientSecret: candidate.clientSecret,
+      accessToken: candidate.accessToken,
+      refreshToken: candidate.refreshToken,
+      expiresAt: candidate.expiresAt,
+      ...(userid === undefined ? {} : { userid }),
+      ...(typeof candidate.scope === "string" ? { scope: candidate.scope } : {}),
+      ...(typeof candidate.tokenType === "string" ? { tokenType: candidate.tokenType } : {}),
+      ...(typeof candidate.csrfToken === "string" ? { csrfToken: candidate.csrfToken } : {}),
+    };
+  }
+  return undefined;
 }
 
 function parseCredentials(value: unknown): Credentials {
@@ -61,10 +75,11 @@ function parseCredentials(value: unknown): Credentials {
 
   const parsed: Credentials = {};
   for (const [profile, tokenSet] of Object.entries(value)) {
-    if (!isTokenSet(tokenSet)) {
+    const normalizedTokenSet = normalizeTokenSet(tokenSet);
+    if (!normalizedTokenSet) {
       throw new ConfigError(`Invalid credentials for profile "${profile}".`);
     }
-    parsed[profile] = tokenSet;
+    parsed[profile] = normalizedTokenSet;
   }
   return parsed;
 }

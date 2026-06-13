@@ -1,6 +1,6 @@
 import type { TokenSet } from "./client.js";
 import { AuthError } from "../errors.js";
-import { isObject } from "./parse.js";
+import { integerOrUndefined, isObject } from "./parse.js";
 
 const WITHINGS_AUTH_BASE = "https://account.withings.com";
 const WITHINGS_API_BASE = "https://wbsapi.withings.net";
@@ -44,7 +44,7 @@ function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
     );
   }
   return {
-    userid: typeof data.userid === "number" ? data.userid : undefined,
+    userid: integerOrUndefined(data.userid),
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_in: data.expires_in,
@@ -123,6 +123,7 @@ export async function refreshAccessToken(tokenSet: TokenSet): Promise<TokenSet> 
 
   return {
     ...tokenSet,
+    userid: tokenSet.userid ?? data.userid,
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: Date.now() + data.expires_in * 1000,
