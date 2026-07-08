@@ -55,7 +55,7 @@
     "prepublishOnly": "bun run typecheck && bun run lint && bun run knip && bun test && bun run check:package"
   },
   "dependencies": {
-    "gunshi": "^0.32.0",
+    "gunshi": "^0.33.0",
     "yoctocolors": "^2.1.2"
   },
   "devDependencies": {
