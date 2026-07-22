@@ -55,7 +55,7 @@
     "prepublishOnly": "bun run typecheck && bun run lint && bun run knip && bun test && bun run check:package"
   },
   "dependencies": {
-    "gunshi": "^0.32.0",
+    "gunshi": "^0.35.1",
     "yoctocolors": "^2.1.2"
   },
   "devDependencies": {
@@ -64,7 +64,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20260610.1",
     "knip": "^6.16.1",
     "lefthook": "^2.1.9",
-    "oxfmt": "^0.54.0",
+    "oxfmt": "^0.55.0",
     "oxlint": "^1.69.0",
     "publint": "^0.3.21"
   },
