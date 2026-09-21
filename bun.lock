@@ -5,7 +5,7 @@
     "": {
       "name": "withings-cli",
       "dependencies": {
-        "gunshi": "^0.32.0",
+        "gunshi": "^0.37.3",
         "yoctocolors": "^2.1.2",
       },
       "devDependencies": {
@@ -271,7 +271,7 @@
 
     "get-tsconfig": ["get-tsconfig@4.14.0", "", { "dependencies": { "resolve-pkg-maps": "^1.0.0" } }, "sha512-yTb+8DXzDREzgvYmh6s9vHsSVCHeC0G3PI5bEXNBHtmshPnO+S5O7qgLEOn0I5QvMy6kpZN8K1NKGyilLb93wA=="],
 
-    "gunshi": ["gunshi@0.32.0", "", {}, "sha512-kvRFiIkxeiLJIE0p7reKItydbY+SKIEtveeElnot2YetMTYNN5qBH4wiuCSeir68zlDvbq0wbTdNiZflt1Y+rA=="],
+    "gunshi": ["gunshi@0.37.3", "", {}, "sha512-uwm23bguqDcleEetknuQnF5okLcgmQPM3iv4aWVHTPDbiSs9shh02F079NCY0mWkrIRjHqNhgmzW6k0FCXhy1g=="],
 
     "has-flag": ["has-flag@4.0.0", "", {}, "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ=="],
 
