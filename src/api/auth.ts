@@ -1,6 +1,7 @@
-import type { TokenSet } from "./client.js";
+import * as v from "valibot";
 import { AuthError } from "../errors.js";
-import { integerOrUndefined, isObject } from "./parse.js";
+import { isObject } from "./parse.js";
+import { UserIdSchema, type TokenSet } from "./token.js";
 
 const WITHINGS_AUTH_BASE = "https://account.withings.com";
 const WITHINGS_API_BASE = "https://wbsapi.withings.net";
@@ -12,15 +13,17 @@ export const CALLBACK_PATH = "/auth/withings/callback";
 export const DEFAULT_REDIRECT_URI = `http://localhost:${CALLBACK_PORT}${CALLBACK_PATH}`;
 export const DEFAULT_SCOPE = "user.metrics";
 
-type TokenEndpointResponse = {
-  userid?: number;
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  scope?: string;
-  csrf_token?: string;
-  token_type?: string;
-};
+const TokenEndpointResponseSchema = v.object({
+  userid: v.optional(UserIdSchema),
+  access_token: v.pipe(v.string(), v.nonEmpty()),
+  refresh_token: v.pipe(v.string(), v.nonEmpty()),
+  expires_in: v.pipe(v.number(), v.safeInteger(), v.minValue(0)),
+  scope: v.optional(v.string()),
+  csrf_token: v.optional(v.string()),
+  token_type: v.optional(v.string()),
+});
+
+type TokenEndpointResponse = v.InferOutput<typeof TokenEndpointResponseSchema>;
 
 function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
   if (!isObject(value)) {
@@ -32,26 +35,14 @@ function parseTokenEndpointResponse(value: unknown): TokenEndpointResponse {
     throw new AuthError(`Token endpoint returned Withings status ${envelope.status}.`);
   }
 
-  const data = isObject(envelope.body) ? envelope.body : envelope;
-
-  if (
-    typeof data.access_token !== "string" ||
-    typeof data.refresh_token !== "string" ||
-    typeof data.expires_in !== "number"
-  ) {
-    throw new AuthError(
-      "Token endpoint response is missing access_token, refresh_token, or expires_in.",
-    );
+  const result = v.safeParse(
+    TokenEndpointResponseSchema,
+    isObject(envelope.body) ? envelope.body : envelope,
+  );
+  if (!result.success) {
+    throw new AuthError("Token endpoint returned an invalid response.");
   }
-  return {
-    userid: integerOrUndefined(data.userid),
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_in: data.expires_in,
-    scope: typeof data.scope === "string" ? data.scope : undefined,
-    csrf_token: typeof data.csrf_token === "string" ? data.csrf_token : undefined,
-    token_type: typeof data.token_type === "string" ? data.token_type : undefined,
-  };
+  return result.output;
 }
 
 export function buildAuthorizationUrl(params: {

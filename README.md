@@ -26,7 +26,7 @@
 
 ## Quick Start
 
-Requires [Bun](https://bun.sh/).
+Requires [Bun](https://bun.sh/) 1.4.2 or newer.
 
 1. Create a Withings developer application at
    <https://developer.withings.com/dashboard/> with this callback URL:
@@ -200,17 +200,16 @@ there and decide the HTTP response policy in that application.
 ### Raw API
 
 ```bash
-withings raw user getdevice --format json
-withings raw measure getmeas '{"category":1,"meastypes":"1,6,76,77,88"}'
-echo '{"startdateymd":"2026-06-01","enddateymd":"2026-06-10","data_fields":"steps,distance,elevation,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3"}' | withings raw measurev2 getactivity
+withings raw call user getdevice --format json
+withings raw call measure getmeas '{"category":1,"meastypes":"1,6,76,77,88"}'
+echo '{"startdateymd":"2026-06-01","enddateymd":"2026-06-10","data_fields":"steps,distance,elevation,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3"}' | withings raw call measurev2 getactivity
 ```
 
 Raw commands are the escape hatch for Withings endpoints that do not have a
 dedicated command yet. They refresh OAuth credentials, send a form-encoded POST,
 add `action=<action>`, and print the unmodified `{ status, body }` envelope.
 The optional JSON object is sent as form fields; if omitted, stdin JSON is
-accepted. `raw measure-getmeas` remains as a compatibility alias for the older
-raw body-measure command.
+accepted. `raw measure-getmeas` provides the body-measure-specific raw response.
 
 ### Error JSON
 

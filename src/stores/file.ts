@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { TokenSet, TokenStore } from "../api/client.js";
+import type { TokenStore } from "../api/client.js";
+import type { TokenSet } from "../api/token.js";
 import { loadCredentials, saveCredentials, withCredentialsLock } from "../config/credentials.js";
 
 const lockContext = new AsyncLocalStorage<Set<string>>();

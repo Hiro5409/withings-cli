@@ -1,16 +1,17 @@
 import colors from "yoctocolors";
 
 export type OutputFormat = "json" | "table";
+type CellValue = string | number | boolean | null | undefined;
 
-export function outputFormat(value: unknown): OutputFormat {
-  return value === "json" ? "json" : "table";
+export function outputFormat(format: OutputFormat | undefined): OutputFormat {
+  return format ?? "table";
 }
 
 export function printJson(value: unknown): void {
   console.log(JSON.stringify(value, null, 2));
 }
 
-export function printRows(rows: Record<string, unknown>[]): void {
+export function printRows(rows: Record<string, CellValue>[]): void {
   if (rows.length === 0) {
     console.log(colors.dim("No rows."));
     return;

@@ -1,26 +1,6 @@
 import colors from "yoctocolors";
 import { CliError } from "./errors.js";
 
-const ERROR_PRINTED = Symbol.for("withings-cli.errorPrinted");
-
-type ErrorWithPrintedFlag = Error & { [ERROR_PRINTED]?: boolean };
-
-export function wasErrorPrinted(error: unknown): boolean {
-  return Boolean(
-    error && typeof error === "object" && (error as ErrorWithPrintedFlag)[ERROR_PRINTED],
-  );
-}
-
-function markErrorPrinted(error: unknown): void {
-  if (error && typeof error === "object") {
-    try {
-      (error as ErrorWithPrintedFlag)[ERROR_PRINTED] = true;
-    } catch {
-      // Some parser errors are frozen by the CLI framework.
-    }
-  }
-}
-
 export function formatFromArgv(argv: string[]): string {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -30,11 +10,15 @@ export function formatFromArgv(argv: string[]): string {
   return "";
 }
 
-export function errorExitCode(error: unknown): number {
+function errorExitCode(error: unknown): number {
   return error instanceof CliError ? error.exitCode : 1;
 }
 
 function errorMessage(error: unknown): string {
+  if (error instanceof AggregateError) {
+    const messages = error.errors.map(errorMessage).filter(Boolean);
+    return messages.join("\n") || error.message || error.name;
+  }
   if (error instanceof Error) return error.message;
   try {
     return JSON.stringify(error);
@@ -71,6 +55,5 @@ export function printError(error: unknown, format: string): number {
       if (error.hint) console.error(colors.dim(`hint: ${error.hint}`));
     }
   }
-  markErrorPrinted(error);
   return errorExitCode(error);
 }

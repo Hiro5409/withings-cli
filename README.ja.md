@@ -26,7 +26,7 @@
 
 ## Quick Start
 
-[Bun](https://bun.sh/) が必要です。
+[Bun](https://bun.sh/) 1.4.2 以降が必要です。
 
 1. Withings の開発者アプリケーションを
    <https://developer.withings.com/dashboard/> で作成します。コールバック
@@ -205,17 +205,17 @@ catch し、そのアプリケーションの HTTP response policy として扱�
 ### Raw API
 
 ```bash
-withings raw user getdevice --format json
-withings raw measure getmeas '{"category":1,"meastypes":"1,6,76,77,88"}'
-echo '{"startdateymd":"2026-06-01","enddateymd":"2026-06-10","data_fields":"steps,distance,elevation,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3"}' | withings raw measurev2 getactivity
+withings raw call user getdevice --format json
+withings raw call measure getmeas '{"category":1,"meastypes":"1,6,76,77,88"}'
+echo '{"startdateymd":"2026-06-01","enddateymd":"2026-06-10","data_fields":"steps,distance,elevation,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3"}' | withings raw call measurev2 getactivity
 ```
 
 raw コマンドは、まだ専用コマンドにしていない Withings endpoint の逃げ道です。
 OAuth クレデンシャルをリフレッシュし、form-urlencoded POST を送り、
 `action=<action>` を自動で追加し、`{ status, body }` のエンベロープを
 無加工で出力します。任意の JSON object は form field として送信されます。
-JSON 引数を省略した場合は stdin JSON も受け付けます。旧
-`raw measure-getmeas` は互換 alias として残しています。
+JSON 引数を省略した場合は stdin JSON も受け付けます。
+`raw measure-getmeas` は体組成 API の raw response を取得します。
 
 ### Error JSON
 

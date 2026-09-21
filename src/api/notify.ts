@@ -1,3 +1,4 @@
+import * as v from "valibot";
 import { postWithingsForm, type TokenStore } from "./client.js";
 import { isObject, numberOrUndefined, stringOrUndefined } from "./parse.js";
 import { assertWithingsOk } from "./withings-error.js";
@@ -67,23 +68,6 @@ function payloadFields(input: unknown): Record<string, string> {
   return fields;
 }
 
-function parseRequiredInteger(fields: Record<string, string>, name: string): number {
-  const value = fields[name];
-  if (value === undefined || !/^\d+$/.test(value)) {
-    throw new Error(`Invalid Withings notification payload: ${name} must be an integer.`);
-  }
-  return Number(value);
-}
-
-function parseOptionalInteger(fields: Record<string, string>, name: string): number | undefined {
-  const value = fields[name];
-  if (value === undefined || value === "") return undefined;
-  if (!/^\d+$/.test(value)) {
-    throw new Error(`Invalid Withings notification payload: ${name} must be an integer.`);
-  }
-  return Number(value);
-}
-
 function isCalendarDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (match === null) return false;
@@ -93,25 +77,49 @@ function isCalendarDate(value: string): boolean {
   return date.toISOString().slice(0, 10) === value;
 }
 
-function parseOptionalDate(fields: Record<string, string>): number | string | undefined {
-  const value = fields.date;
-  if (value === undefined || value === "") return undefined;
-  if (/^\d+$/.test(value)) return Number(value);
-  if (isCalendarDate(value)) return value;
-  throw new Error("Invalid Withings notification payload: date must be YYYY-MM-DD or unix time.");
+function integerField(name: string) {
+  const message = `Invalid Withings notification payload: ${name} must be an integer.`;
+  return v.pipe(
+    v.string(message),
+    v.regex(/^\d+$/, message),
+    v.transform(Number),
+    v.safeInteger(message),
+  );
 }
+
+const dateMessage = "Invalid Withings notification payload: date must be YYYY-MM-DD or unix time.";
+const NotificationPayloadSchema = v.object({
+  appli: integerField("appli"),
+  userid: v.optional(integerField("userid")),
+  startdate: v.optional(integerField("startdate")),
+  enddate: v.optional(integerField("enddate")),
+  date: v.optional(
+    v.pipe(
+      v.string(),
+      v.check((value) => /^\d+$/.test(value) || isCalendarDate(value), dateMessage),
+      v.transform((value) => (/^\d+$/.test(value) ? Number(value) : value)),
+    ),
+  ),
+  deviceid: v.optional(v.string()),
+  mac: v.optional(v.string()),
+  action: v.optional(v.string()),
+});
 
 export function parseNotificationPayload(input: unknown): WithingsNotification {
   const fields = payloadFields(input);
+  const result = v.safeParse(NotificationPayloadSchema, {
+    ...fields,
+    appli: fields.appli ?? "",
+    userid: fields.userid || undefined,
+    startdate: fields.startdate || undefined,
+    enddate: fields.enddate || undefined,
+    date: fields.date || undefined,
+  });
+  if (!result.success) {
+    throw new Error(result.issues[0]?.message ?? "Invalid Withings notification payload.");
+  }
   return {
-    appli: parseRequiredInteger(fields, "appli"),
-    userid: parseOptionalInteger(fields, "userid"),
-    startdate: parseOptionalInteger(fields, "startdate"),
-    enddate: parseOptionalInteger(fields, "enddate"),
-    date: parseOptionalDate(fields),
-    deviceid: fields.deviceid,
-    mac: fields.mac,
-    action: fields.action,
+    ...result.output,
     fields,
   };
 }

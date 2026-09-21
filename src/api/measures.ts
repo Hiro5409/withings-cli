@@ -1,3 +1,4 @@
+import * as v from "valibot";
 import { postWithingsForm, type TokenStore } from "./client.js";
 import {
   hasMore,
@@ -24,11 +25,13 @@ export type MeasureQuery = {
 // reference (https://developer.withings.com/api-reference/#tag/measure).
 // Responses are parsed, never asserted: every field below is proven by a
 // runtime check before use, and unrecognized data is kept in `raw`.
-type MeasureValue = {
-  type: number;
-  value: number;
-  unit: number;
-};
+const MeasureValueSchema = v.object({
+  type: v.number(),
+  value: v.number(),
+  unit: v.number(),
+});
+
+type MeasureValue = v.InferOutput<typeof MeasureValueSchema>;
 
 export type NormalizedMeasureGroup = {
   grpid?: number;
@@ -48,15 +51,8 @@ export type NormalizedMeasureGroup = {
 };
 
 function parseMeasureValue(value: unknown): MeasureValue | undefined {
-  if (!isObject(value)) return undefined;
-  if (
-    typeof value.type !== "number" ||
-    typeof value.value !== "number" ||
-    typeof value.unit !== "number"
-  ) {
-    return undefined;
-  }
-  return { type: value.type, value: value.value, unit: value.unit };
+  const result = v.safeParse(MeasureValueSchema, value);
+  return result.success ? result.output : undefined;
 }
 
 export function normalizeMeasureGroup(group: unknown): NormalizedMeasureGroup {

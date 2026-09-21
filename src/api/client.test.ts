@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import { createWithingsClient } from "../index.js";
-import type { TokenSet, TokenStore } from "./client.js";
+import type { TokenStore } from "./client.js";
+import type { TokenSet } from "./token.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -40,6 +41,11 @@ function jsonResponse(value: unknown): Response {
   });
 }
 
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  return input instanceof URL ? input.href : input.url;
+}
+
 test("createWithingsClient refreshes an expired token and saves the rotated token", async () => {
   const store = new MemoryTokenStore(
     token({
@@ -51,7 +57,7 @@ test("createWithingsClient refreshes an expired token and saves the rotated toke
   const authorizations: (string | null)[] = [];
 
   globalThis.fetch = (async (input, init) => {
-    const url = String(input);
+    const url = requestUrl(input);
     if (url === "https://wbsapi.withings.net/v2/oauth2") {
       const body = init?.body instanceof URLSearchParams ? init.body : new URLSearchParams();
       expect(body.get("refresh_token")).toBe("old-refresh");
@@ -86,7 +92,7 @@ test("createWithingsClient uses a valid token without saving", async () => {
   const urls: string[] = [];
 
   globalThis.fetch = (async (input, init) => {
-    urls.push(String(input));
+    urls.push(requestUrl(input));
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer valid-access");
     return jsonResponse({ status: 0, body: { devices: [] } });
   }) as typeof fetch;
@@ -114,7 +120,7 @@ test("createWithingsClient rechecks token state inside a store refresh lock", as
   };
 
   globalThis.fetch = (async (input, init) => {
-    expect(String(input)).toBe("https://wbsapi.withings.net/v2/user");
+    expect(requestUrl(input)).toBe("https://wbsapi.withings.net/v2/user");
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer already-refreshed");
     return jsonResponse({ status: 0, body: { devices: [] } });
   }) as typeof fetch;

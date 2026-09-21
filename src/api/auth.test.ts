@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { exchangeCodeForToken, refreshAccessToken } from "./auth.js";
-import type { TokenSet } from "./client.js";
+import type { TokenSet } from "./token.js";
 
 const originalFetch = globalThis.fetch;
 
@@ -12,6 +12,11 @@ function jsonResponse(value: unknown): Response {
   return new Response(JSON.stringify(value), {
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  return input instanceof URL ? input.href : input.url;
 }
 
 function token(overrides: Partial<TokenSet> = {}): TokenSet {
@@ -27,7 +32,7 @@ function token(overrides: Partial<TokenSet> = {}): TokenSet {
 
 test("exchangeCodeForToken normalizes a string userid from the token endpoint", async () => {
   globalThis.fetch = (async (input, init) => {
-    expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
+    expect(requestUrl(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
     expect(init?.method).toBe("POST");
     return jsonResponse({
       status: 0,
@@ -52,7 +57,7 @@ test("exchangeCodeForToken normalizes a string userid from the token endpoint", 
 
 test("exchangeCodeForToken accepts a direct token response without a Withings envelope", async () => {
   globalThis.fetch = (async (input, init) => {
-    expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
+    expect(requestUrl(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
     expect(init?.method).toBe("POST");
     return jsonResponse({
       userid: "123",
@@ -76,7 +81,7 @@ test("exchangeCodeForToken accepts a direct token response without a Withings en
 
 test("refreshAccessToken backfills userid when the refresh response includes it", async () => {
   globalThis.fetch = (async (input, init) => {
-    expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
+    expect(requestUrl(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
     expect(init?.method).toBe("POST");
     return jsonResponse({
       status: 0,
@@ -98,7 +103,7 @@ test("refreshAccessToken backfills userid when the refresh response includes it"
 
 test("refreshAccessToken keeps an existing userid when the refresh response omits it", async () => {
   globalThis.fetch = (async (input, init) => {
-    expect(String(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
+    expect(requestUrl(input)).toBe("https://wbsapi.withings.net/v2/oauth2");
     expect(init?.method).toBe("POST");
     return jsonResponse({
       status: 0,
@@ -113,4 +118,21 @@ test("refreshAccessToken keeps an existing userid when the refresh response omit
   const refreshed = await refreshAccessToken(token({ userid: 789 }));
 
   expect(refreshed.userid).toBe(789);
+});
+
+test("reports an invalid token response without misidentifying the field", async () => {
+  globalThis.fetch = (async (_input, _init) =>
+    jsonResponse({
+      status: 0,
+      body: {
+        access_token: "new-access",
+        refresh_token: "new-refresh",
+        expires_in: 3600,
+        scope: null,
+      },
+    })) as typeof fetch;
+
+  expect(refreshAccessToken(token())).rejects.toThrow(
+    "Token endpoint returned an invalid response.",
+  );
 });

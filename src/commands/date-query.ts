@@ -1,12 +1,13 @@
+import { args, combinator, integer } from "gunshi/combinators";
 import { CliError } from "../errors.js";
 
 const DEFAULT_RECENT_DAYS = 30;
 
 type DateQueryValues = {
-  startdateymd?: unknown;
-  enddateymd?: unknown;
-  lastupdate?: unknown;
-  limit?: unknown;
+  startdateymd?: string;
+  enddateymd?: string;
+  lastupdate?: number;
+  limit?: number;
 };
 
 export type CalendarDateQuery = {
@@ -16,46 +17,19 @@ export type CalendarDateQuery = {
   limit: number;
 };
 
-export const calendarDateArgs = {
-  startdateymd: {
-    type: "string" as const,
-    description: "Start date as YYYY-MM-DD",
-  },
-  enddateymd: {
-    type: "string" as const,
-    description: "End date as YYYY-MM-DD",
-  },
-  lastupdate: {
-    type: "string" as const,
-    description: "Only fetch data updated after this unix timestamp seconds",
-  },
-  limit: {
-    type: "number" as const,
-    description: "Maximum normalized rows to print",
-    default: 30,
-  },
-};
-
-function parseLimit(value: unknown): number {
-  const parsed = Number(value ?? 30);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new CliError("limit must be a positive integer.");
+export function parseUnixSeconds(value: string, name: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new CliError(`${name} must be a non-negative unix timestamp in seconds.`);
   }
-  return parsed;
-}
-
-export function parseUnixSeconds(value: unknown, name: string): number | undefined {
-  if (value === undefined) return undefined;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
+  if (!Number.isSafeInteger(parsed)) {
     throw new CliError(`${name} must be a non-negative unix timestamp in seconds.`);
   }
   return parsed;
 }
 
-function parseDateYmd(value: unknown, name: string): string | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+export function parseCalendarDate(value: string, name: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new CliError(`${name} must be a calendar date in YYYY-MM-DD format.`);
   }
 
@@ -70,6 +44,30 @@ function parseDateYmd(value: unknown, name: string): string | undefined {
 
   return value;
 }
+
+export function unixSecondsArg(name: string, description: string) {
+  return combinator({
+    description,
+    parse: (value) => parseUnixSeconds(value, name),
+  });
+}
+
+function calendarDateArg(name: string, description: string) {
+  return combinator({
+    description,
+    parse: (value) => parseCalendarDate(value, name),
+  });
+}
+
+export const calendarDateArgs = args({
+  startdateymd: calendarDateArg("startdateymd", "Start date as YYYY-MM-DD"),
+  enddateymd: calendarDateArg("enddateymd", "End date as YYYY-MM-DD"),
+  lastupdate: unixSecondsArg(
+    "lastupdate",
+    "Only fetch data updated after this unix timestamp in seconds",
+  ),
+  limit: integer({ min: 1, description: "Maximum normalized rows to print (default: 30)" }),
+});
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -98,10 +96,7 @@ export function calendarDateQuery(
   values: DateQueryValues,
   options: { now?: Date } = {},
 ): CalendarDateQuery {
-  const limit = parseLimit(values.limit);
-  const startdateymd = parseDateYmd(values.startdateymd, "startdateymd");
-  const enddateymd = parseDateYmd(values.enddateymd, "enddateymd");
-  const lastupdate = parseUnixSeconds(values.lastupdate, "lastupdate");
+  const { startdateymd, enddateymd, lastupdate, limit = 30 } = values;
 
   if (lastupdate !== undefined && (startdateymd !== undefined || enddateymd !== undefined)) {
     throw new CliError("lastupdate cannot be combined with startdateymd or enddateymd.");

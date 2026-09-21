@@ -1,18 +1,14 @@
-export const globalArgs = {
-  format: {
-    type: "string" as const,
-    short: "f",
-    description: "Output format: json | table",
-    default: "table",
-  },
-  profile: {
-    type: "string" as const,
-    description: "OAuth profile name",
-    default: "default",
-  },
-  "no-color": {
-    type: "boolean" as const,
-    description: "Disable colored output",
-    default: false,
-  },
-};
+import { args, boolean, choice, short, withDefault } from "gunshi/combinators";
+import { nonEmptyStringArg } from "./value-arg.js";
+
+export const globalArgs = args({
+  format: short(
+    choice(["json", "table"] as const, { description: "Output format (default: table)" }),
+    "f",
+  ),
+  profile: nonEmptyStringArg("profile", 'OAuth profile name (default: "default")'),
+  color: withDefault(
+    boolean({ negatable: true, description: "Enable or disable colored output" }),
+    true,
+  ),
+});

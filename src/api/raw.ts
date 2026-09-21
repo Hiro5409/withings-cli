@@ -1,3 +1,4 @@
+import * as v from "valibot";
 import { CliError } from "../errors.js";
 import { postWithingsForm, type TokenStore } from "./client.js";
 import { isObject, numberOrUndefined } from "./parse.js";
@@ -13,31 +14,35 @@ const SERVICE_URLS: Record<string, string> = {
   user: "https://wbsapi.withings.net/v2/user",
 };
 
+const RawFieldsSchema = v.custom<Record<string, unknown>>(
+  (input) => isObject(input) && !Array.isArray(input),
+  "Expected a JSON object.",
+);
+
 export function parseRawJson(value: string | undefined): Record<string, unknown> {
   if (value === undefined || value.trim() === "") return {};
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-  } catch {
+  const json = v.safeParse(v.pipe(v.string(), v.parseJson()), value);
+  if (!json.success) {
     throw new CliError("Invalid raw JSON argument.", {
       exitCode: 3,
       code: "invalid_json",
       why: "The raw command expects a JSON object argument or stdin payload.",
-      hint: 'Use syntax like: withings raw user getdevice \'{"foo":"bar"}\'.',
+      hint: 'Use syntax like: withings raw call user getdevice \'{"foo":"bar"}\'.',
     });
   }
 
-  if (!isObject(parsed) || Array.isArray(parsed)) {
+  const object = v.safeParse(RawFieldsSchema, json.output);
+  if (!object.success) {
     throw new CliError("Invalid raw JSON argument.", {
       exitCode: 3,
       code: "invalid_json",
       why: "The raw command payload must be a JSON object.",
-      hint: 'Use an object: withings raw user getdevice \'{"foo":"bar"}\'.',
+      hint: 'Use an object: withings raw call user getdevice \'{"foo":"bar"}\'.',
     });
   }
 
-  return parsed;
+  return object.output;
 }
 
 function rawValueToString(value: unknown, key: string): string {

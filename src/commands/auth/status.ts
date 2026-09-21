@@ -3,16 +3,17 @@ import colors from "yoctocolors";
 import { getTokenStatus } from "../../api/auth.js";
 import { configDir } from "../../config/config.js";
 import { globalArgs } from "../../global-args.js";
-import { outputFormat, printJson } from "../../output.js";
+import { printJson } from "../../output.js";
 import { FileTokenStore } from "../../stores/file.js";
+import { profileName } from "../token-store.js";
 
 export const statusCommand = define({
   name: "status",
   description: "Show local authentication status",
   args: globalArgs,
   run: async (ctx) => {
-    const format = outputFormat(ctx.values.format);
-    const profile = String(ctx.values.profile ?? "default");
+    const { format } = ctx.values;
+    const profile = profileName(ctx.values.profile);
     const dir = configDir();
     const tokenSet = await new FileTokenStore({ configDir: dir, profile }).load();
 

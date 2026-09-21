@@ -1,4 +1,5 @@
 import { define } from "gunshi";
+import { args, merge } from "gunshi/combinators";
 import colors from "yoctocolors";
 import {
   buildAuthorizationUrl,
@@ -11,22 +12,21 @@ import {
 } from "../../api/auth.js";
 import { ConfigError } from "../../errors.js";
 import { globalArgs } from "../../global-args.js";
-import { tokenStoreForProfile } from "../token-store.js";
+import { nonEmptyStringArg } from "../../value-arg.js";
+import { profileName, tokenStoreForProfile } from "../token-store.js";
+
+const scope = nonEmptyStringArg("scope", `OAuth scopes to request (default: ${DEFAULT_SCOPE})`);
 
 export const loginCommand = define({
   name: "login",
   description: "Authenticate with Withings via OAuth2",
-  args: {
-    ...globalArgs,
-    scope: {
-      type: "string",
-      description: "OAuth scopes to request",
-      default: DEFAULT_SCOPE,
-    },
-  },
+  args: merge(
+    globalArgs,
+    args({
+      scope,
+    }),
+  ),
   run: async (ctx) => {
-    const profile = String(ctx.values.profile ?? "default");
-    const scope = String(ctx.values.scope ?? DEFAULT_SCOPE);
     const clientId = process.env.WITHINGS_CLIENT_ID;
     const clientSecret = process.env.WITHINGS_CLIENT_SECRET;
 
@@ -40,7 +40,7 @@ export const loginCommand = define({
     const authUrl = buildAuthorizationUrl({
       clientId,
       state,
-      scope,
+      scope: ctx.values.scope ?? DEFAULT_SCOPE,
       redirectUri: DEFAULT_REDIRECT_URI,
     });
 
@@ -58,6 +58,7 @@ export const loginCommand = define({
       redirectUri: DEFAULT_REDIRECT_URI,
     });
 
+    const profile = profileName(ctx.values.profile);
     await tokenStoreForProfile(profile).save(tokenSet);
 
     console.log(colors.green(`Authenticated successfully as profile "${profile}".`));
@@ -88,13 +89,13 @@ function waitForCallback(expectedState: string): Promise<{ code: string }> {
           const error =
             url.searchParams.get("error_description") ?? "No authorization code received";
           clearTimeout(timeout);
-          server.stop();
+          void server.stop();
           reject(new Error(error));
           return new Response(`Authentication failed: ${error}`, { status: 400 });
         }
 
         clearTimeout(timeout);
-        server.stop();
+        void server.stop();
         resolve({ code });
         return new Response("Authentication successful. You can close this tab.", {
           headers: { "Content-Type": "text/html" },
@@ -103,7 +104,7 @@ function waitForCallback(expectedState: string): Promise<{ code: string }> {
     });
 
     const timeout = setTimeout(() => {
-      server.stop();
+      void server.stop();
       reject(new Error("Authentication timed out after 120 seconds."));
     }, 120_000);
   });

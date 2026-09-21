@@ -1,17 +1,6 @@
 import { AuthError, CliError } from "../errors.js";
 import { getTokenStatus, refreshAccessToken } from "./auth.js";
-
-export type TokenSet = {
-  userid?: number;
-  clientId: string;
-  clientSecret: string;
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  scope?: string;
-  tokenType?: string;
-  csrfToken?: string;
-};
+import type { TokenSet } from "./token.js";
 
 /**
  * Storage for one Withings OAuth token set.

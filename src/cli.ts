@@ -7,9 +7,8 @@ import { activityCommand } from "./commands/activity.js";
 import { latestCommand } from "./commands/latest.js";
 import { measuresCommand } from "./commands/measures.js";
 import { notifyCommand } from "./commands/notify.js";
-import { rawCommand, rawMeasureGetmeasCommand } from "./commands/raw.js";
+import { rawCallCommand, rawCommand, rawMeasureGetmeasCommand } from "./commands/raw.js";
 import { sleepCommand } from "./commands/sleep.js";
-import { printError } from "./error-output.js";
 import { globalArgs } from "./global-args.js";
 
 const rootCommand = define({
@@ -39,6 +38,7 @@ export async function main() {
       raw: define({
         ...rawCommand,
         subCommands: {
+          call: rawCallCommand,
           "measure-getmeas": rawMeasureGetmeasCommand,
         },
       }),
@@ -49,8 +49,6 @@ export async function main() {
       }
       return renderHeader(ctx);
     },
-    onErrorCommand: (ctx, error) => {
-      printError(error, String(ctx.values.format ?? "table"));
-    },
+    renderValidationErrors: null,
   });
 }

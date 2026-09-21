@@ -40,10 +40,10 @@
     "dev": "bun run src/main.ts",
     "build": "bun run build:cli && bun run build:lib",
     "build:cli": "bun build src/main.ts --compile --outfile withings",
-    "build:lib": "rm -rf dist && bun build src/index.ts --outfile dist/index.js --target browser && tsgo -p tsconfig.dist.json",
-    "typecheck": "tsgo --noEmit",
+    "build:lib": "rm -rf dist && bun build src/index.ts --outfile dist/index.js --target browser && tsc -p tsconfig.dist.json",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "lint": "oxlint && oxfmt --check",
+    "lint": "oxlint --deny-warnings && oxfmt --check",
     "format": "oxfmt",
     "knip": "knip",
     "publint": "publint run --pack bun",
@@ -56,19 +56,22 @@
   },
   "dependencies": {
     "gunshi": "^0.37.3",
-    "yoctocolors": "^2.1.2"
+    "valibot": "^1.5.0",
+    "yoctocolors": "^2.2.0"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.3",
-    "@types/bun": "latest",
-    "@typescript/native-preview": "^7.0.0-dev.20260610.1",
-    "knip": "^6.16.1",
-    "lefthook": "^2.1.9",
-    "oxfmt": "^0.54.0",
-    "oxlint": "^1.69.0",
-    "publint": "^0.3.21"
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@types/bun": "^1.4.2",
+    "knip": "^6.36.0",
+    "lefthook": "^2.1.14",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2002",
+    "publint": "^0.3.24",
+    "typescript": "^7.0.2"
   },
   "engines": {
-    "bun": ">=1.2.0"
-  }
+    "bun": ">=1.4.2"
+  },
+  "packageManager": "bun@1.4.2"
 }

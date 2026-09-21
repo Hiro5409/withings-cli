@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { CliError } from "../errors.js";
-import { calendarDateQuery, parseUnixSeconds } from "./date-query.js";
+import { calendarDateQuery, parseCalendarDate, parseUnixSeconds } from "./date-query.js";
 
 test("builds an explicit calendar date query", () => {
   expect(
@@ -32,8 +32,8 @@ test("uses a fixed default recent window independent of limit", () => {
 });
 
 test("rejects incomplete date ranges", () => {
-  expect(() => calendarDateQuery({ startdateymd: "2026-06-01" })).toThrow(CliError);
-  expect(() => calendarDateQuery({ enddateymd: "2026-06-10" })).toThrow(CliError);
+  expect(() => calendarDateQuery({ startdateymd: "2026-06-01", limit: 30 })).toThrow(CliError);
+  expect(() => calendarDateQuery({ enddateymd: "2026-06-10", limit: 30 })).toThrow(CliError);
 });
 
 test("rejects lastupdate combined with date ranges", () => {
@@ -42,26 +42,24 @@ test("rejects lastupdate combined with date ranges", () => {
       startdateymd: "2026-06-01",
       enddateymd: "2026-06-10",
       lastupdate: 1_720_000_000,
+      limit: 30,
     }),
   ).toThrow(CliError);
 });
 
 test("rejects invalid dates and reversed ranges", () => {
-  expect(() =>
-    calendarDateQuery({
-      startdateymd: "2026-02-30",
-      enddateymd: "2026-03-01",
-    }),
-  ).toThrow(CliError);
+  expect(() => parseCalendarDate("2026-02-30", "startdateymd")).toThrow(CliError);
   expect(() =>
     calendarDateQuery({
       startdateymd: "2026-06-10",
       enddateymd: "2026-06-01",
+      limit: 30,
     }),
   ).toThrow(CliError);
 });
 
-test("rejects invalid limits and unix timestamps", () => {
-  expect(() => calendarDateQuery({ limit: 0 })).toThrow(CliError);
-  expect(() => parseUnixSeconds("-1", "lastupdate")).toThrow(CliError);
+test("rejects invalid unix timestamps", () => {
+  for (const value of ["", " ", "-1", "1e3", "0x10"]) {
+    expect(() => parseUnixSeconds(value, "lastupdate")).toThrow(CliError);
+  }
 });

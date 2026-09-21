@@ -1,4 +1,5 @@
 import { define } from "gunshi";
+import { args, combinator, integer, merge, required } from "gunshi/combinators";
 import colors from "yoctocolors";
 import {
   KNOWN_APPLI,
@@ -9,46 +10,35 @@ import {
 import { CliError } from "../errors.js";
 import { globalArgs } from "../global-args.js";
 import { outputFormat, printJson, printMessage, printRows } from "../output.js";
+import { nonEmptyStringArg } from "../value-arg.js";
 import { tokenStoreForProfile } from "./token-store.js";
 
-function parseAppli(value: unknown, required: boolean): number | undefined {
-  if (value === undefined) {
-    if (!required) return undefined;
-    throw new CliError(`--appli is required (${KNOWN_APPLI}).`);
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new CliError(`--appli must be a non-negative integer (${KNOWN_APPLI}).`);
-  }
-  return parsed;
-}
+const callbackUrl = combinator({
+  description: "Publicly reachable http(s) callback URL",
+  parse: (url) => {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      throw new CliError("--callbackurl must be an http(s) URL reachable by Withings servers.");
+    }
+    return url;
+  },
+});
 
-function requireCallbackUrl(value: unknown): string {
-  const url = typeof value === "string" ? value : "";
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    throw new CliError("--callbackurl must be an http(s) URL reachable by Withings servers.");
-  }
-  return url;
-}
+const appli = integer({
+  min: 0,
+  description: `Notification category (${KNOWN_APPLI})`,
+});
 
 const listCommand = define({
   name: "list",
   description: "List webhook subscriptions",
-  args: {
-    ...globalArgs,
-    appli: {
-      type: "string" as const,
-      description: `Filter by notification category (${KNOWN_APPLI})`,
-    },
-  },
+  args: merge(globalArgs, args({ appli })),
   run: async (ctx) => {
-    const profile = String(ctx.values.profile ?? "default");
     const subscriptions = await listNotifications({
-      store: tokenStoreForProfile(profile),
-      appli: parseAppli(ctx.values.appli, false),
+      store: tokenStoreForProfile(ctx.values.profile),
+      appli: ctx.values.appli,
     });
 
-    if (outputFormat(ctx.values.format) === "json") {
+    if (ctx.values.format === "json") {
       printJson({ subscriptions });
       return;
     }
@@ -70,38 +60,26 @@ const listCommand = define({
 const subscribeCommand = define({
   name: "subscribe",
   description: "Subscribe a callback URL to Withings data notifications",
-  args: {
-    ...globalArgs,
-    callbackurl: {
-      type: "string" as const,
-      description: "Publicly reachable http(s) URL that Withings will POST to",
-    },
-    appli: {
-      type: "string" as const,
-      description: `Notification category (${KNOWN_APPLI})`,
-    },
-    comment: {
-      type: "string" as const,
-      description: "Free-text label for this subscription",
-    },
-  },
+  args: merge(
+    globalArgs,
+    args({
+      callbackurl: required(callbackUrl),
+      appli: required(appli),
+      comment: nonEmptyStringArg("comment", "Free-text label for this subscription"),
+    }),
+  ),
   run: async (ctx) => {
-    const profile = String(ctx.values.profile ?? "default");
-    const callbackurl = requireCallbackUrl(ctx.values.callbackurl);
-    const appli = parseAppli(ctx.values.appli, true);
-    if (appli === undefined) throw new CliError("--appli is required.");
-
     await subscribeNotification({
-      store: tokenStoreForProfile(profile),
-      callbackurl,
-      appli,
-      comment: typeof ctx.values.comment === "string" ? ctx.values.comment : undefined,
+      store: tokenStoreForProfile(ctx.values.profile),
+      callbackurl: ctx.values.callbackurl,
+      appli: ctx.values.appli,
+      comment: ctx.values.comment,
     });
 
     printMessage(
-      colors.green(`Subscribed ${callbackurl} to appli ${appli}.`),
+      colors.green(`Subscribed ${ctx.values.callbackurl} to appli ${ctx.values.appli}.`),
       outputFormat(ctx.values.format),
-      { ok: true, callbackurl, appli },
+      { ok: true, callbackurl: ctx.values.callbackurl, appli: ctx.values.appli },
     );
   },
 });
@@ -109,32 +87,18 @@ const subscribeCommand = define({
 const revokeCommand = define({
   name: "revoke",
   description: "Revoke a webhook subscription",
-  args: {
-    ...globalArgs,
-    callbackurl: {
-      type: "string" as const,
-      description: "Callback URL of the subscription to revoke",
-    },
-    appli: {
-      type: "string" as const,
-      description: `Limit revocation to one category (${KNOWN_APPLI})`,
-    },
-  },
+  args: merge(globalArgs, args({ callbackurl: required(callbackUrl), appli })),
   run: async (ctx) => {
-    const profile = String(ctx.values.profile ?? "default");
-    const callbackurl = requireCallbackUrl(ctx.values.callbackurl);
-    const appli = parseAppli(ctx.values.appli, false);
-
     await revokeNotification({
-      store: tokenStoreForProfile(profile),
-      callbackurl,
-      appli,
+      store: tokenStoreForProfile(ctx.values.profile),
+      callbackurl: ctx.values.callbackurl,
+      appli: ctx.values.appli,
     });
 
     printMessage(
-      colors.green(`Revoked subscription for ${callbackurl}.`),
+      colors.green(`Revoked subscription for ${ctx.values.callbackurl}.`),
       outputFormat(ctx.values.format),
-      { ok: true, callbackurl, appli },
+      { ok: true, callbackurl: ctx.values.callbackurl, appli: ctx.values.appli },
     );
   },
 });

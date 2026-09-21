@@ -11,11 +11,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { TokenSet } from "../api/client.js";
-import { integerOrUndefined, isObject } from "../api/parse.js";
+import * as v from "valibot";
+import { TokenSetSchema, type TokenSet } from "../api/token.js";
 import { ConfigError } from "../errors.js";
 
 export type Credentials = Record<string, TokenSet>;
+const CredentialsSchema = v.record(v.string(), TokenSetSchema);
 const MALFORMED_LOCK_STALE_MS = 60_000;
 
 function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
@@ -38,50 +39,20 @@ function prepareCredentialsDir(dir: string): void {
   chmodSync(dir, 0o700);
 }
 
-function normalizeTokenSet(value: unknown): TokenSet | undefined {
-  if (!isObject(value)) return undefined;
-  const candidate = value;
-  const userid = integerOrUndefined(candidate.userid);
-  if (
-    typeof candidate.clientId === "string" &&
-    typeof candidate.clientSecret === "string" &&
-    typeof candidate.accessToken === "string" &&
-    typeof candidate.refreshToken === "string" &&
-    typeof candidate.expiresAt === "number" &&
-    (candidate.userid === undefined || userid !== undefined) &&
-    (candidate.scope === undefined || typeof candidate.scope === "string") &&
-    (candidate.tokenType === undefined || typeof candidate.tokenType === "string") &&
-    (candidate.csrfToken === undefined || typeof candidate.csrfToken === "string")
-  ) {
-    return {
-      clientId: candidate.clientId,
-      clientSecret: candidate.clientSecret,
-      accessToken: candidate.accessToken,
-      refreshToken: candidate.refreshToken,
-      expiresAt: candidate.expiresAt,
-      ...(userid === undefined ? {} : { userid }),
-      ...(typeof candidate.scope === "string" ? { scope: candidate.scope } : {}),
-      ...(typeof candidate.tokenType === "string" ? { tokenType: candidate.tokenType } : {}),
-      ...(typeof candidate.csrfToken === "string" ? { csrfToken: candidate.csrfToken } : {}),
-    };
-  }
-  return undefined;
-}
-
 function parseCredentials(value: unknown): Credentials {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ConfigError("credentials.json must contain an object.");
   }
 
-  const parsed: Credentials = {};
-  for (const [profile, tokenSet] of Object.entries(value)) {
-    const normalizedTokenSet = normalizeTokenSet(tokenSet);
-    if (!normalizedTokenSet) {
+  const result = v.safeParse(CredentialsSchema, value);
+  if (!result.success) {
+    const profile = result.issues[0]?.path?.[0]?.key;
+    if (typeof profile === "string") {
       throw new ConfigError(`Invalid credentials for profile "${profile}".`);
     }
-    parsed[profile] = normalizedTokenSet;
+    throw new ConfigError("credentials.json contains invalid credentials.");
   }
-  return parsed;
+  return result.output;
 }
 
 export function loadCredentials(dir: string): Credentials {

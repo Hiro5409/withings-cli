@@ -40,7 +40,8 @@ export {
   revokeNotification,
   subscribeNotification,
 };
-export type { TokenSet, TokenStore } from "./api/client.js";
+export type { TokenStore } from "./api/client.js";
+export type { TokenSet } from "./api/token.js";
 export type { ActivityQuery, MeasureQuery, NotifySubscription, SleepQuery, WithingsNotification };
 
 export function createWithingsClient(params: { store: TokenStore }) {

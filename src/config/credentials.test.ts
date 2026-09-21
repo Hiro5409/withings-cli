@@ -134,11 +134,11 @@ test("withCredentialsLock recovers an old malformed lock", async () => {
   expect(existsSync(lockPath)).toBe(false);
 });
 
-test("withCredentialsLock timeout includes the lock path", async () => {
+test("withCredentialsLock timeout includes the lock path", () => {
   const dir = tempConfigDir();
   saveCredentials(dir, {});
   const lockPath = join(dir, "credentials.lock");
   writeFileSync(lockPath, `${process.pid}\n`);
 
-  await expect(withCredentialsLock(dir, async () => "ok", 1)).rejects.toThrow(lockPath);
+  expect(withCredentialsLock(dir, async () => "ok", 1)).rejects.toThrow(lockPath);
 });
