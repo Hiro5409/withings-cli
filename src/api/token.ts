@@ -20,3 +20,8 @@ export const TokenSetSchema = v.object({
 });
 
 export type TokenSet = v.InferOutput<typeof TokenSetSchema>;
+
+export function parseTokenSet(input: unknown): TokenSet | undefined {
+  const result = v.safeParse(TokenSetSchema, input);
+  return result.success ? result.output : undefined;
+}

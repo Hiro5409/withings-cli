@@ -23,6 +23,7 @@ import {
 } from "./api/notify.js";
 import { callRawWithings } from "./api/raw.js";
 import { fetchSleepSummaries, type SleepQuery } from "./api/sleep.js";
+import { parseTokenSet } from "./api/token.js";
 
 export {
   buildAuthorizationUrl,
@@ -36,6 +37,7 @@ export {
   listNotifications,
   normalizeMeasureGroup,
   parseNotificationPayload,
+  parseTokenSet,
   refreshAccessToken,
   revokeNotification,
   subscribeNotification,
