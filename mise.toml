@@ -1,0 +1,7 @@
+[tools]
+gitleaks = "8.30.1"
+lefthook = "2.1.17"
+
+[settings]
+# Bun's version lives in .bun-version.
+idiomatic_version_file_enable_tools = ["bun"]

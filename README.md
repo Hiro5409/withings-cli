@@ -269,11 +269,23 @@ that owns the full load -> refresh -> save sequence.
 
 ## Development
 
+Install and [activate mise](https://mise.jdx.dev/getting-started.html). mise
+installs the Bun version in `.bun-version` and the Gitleaks and Lefthook
+versions in `mise.toml`:
+
 ```bash
-bun install
+mise trust
+mise install
+bun install --frozen-lockfile
+lefthook install
 bun run typecheck
 bun test
 ```
+
+[Lefthook](https://lefthook.dev/) runs the Git hooks in `lefthook.yml`. The
+pre-commit hook runs lint, type-check, tests, and Knip, and scans the staged
+changes for secrets with Gitleaks. The pre-push hook runs
+`bun audit --audit-level=high`, which fails on high and critical advisories.
 
 ### OAuth design notes
 

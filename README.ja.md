@@ -275,11 +275,23 @@ load -> refresh -> save 全体を Durable Object、D1 transaction、その他の
 
 ## Development
 
+[mise](https://mise.jdx.dev/getting-started.html) をインストールして有効化
+します。mise は `.bun-version` の Bun と、`mise.toml` の Gitleaks・Lefthook
+をインストールします:
+
 ```bash
-bun install
+mise trust
+mise install
+bun install --frozen-lockfile
+lefthook install
 bun run typecheck
 bun test
 ```
+
+[Lefthook](https://lefthook.dev/) が `lefthook.yml` の Git hook を実行します。
+pre-commit hook は lint・型チェック・テスト・Knip を実行し、stage した変更を
+Gitleaks で検査します。pre-push hook は `bun audit --audit-level=high` を実行し、
+high と critical の advisory で失敗します。
 
 ### OAuth の設計メモ
 
