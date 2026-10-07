@@ -286,6 +286,13 @@ bun test
 pre-commit hook runs lint, type-check, tests, and Knip, and scans the staged
 changes for secrets with Gitleaks. The pre-push hook runs
 `bun audit --audit-level=high`, which fails on high and critical advisories.
+CI runs the same checks and scans the Git history with the same Gitleaks
+version.
+
+`bun run check:package` packs the npm artifact into `artifact/` and lints
+that tarball with publint and Are the Types Wrong?. CI also installs the
+tarball into an empty project, runs its CLI, and runs and type-checks a
+library consumer against it.
 
 ### OAuth design notes
 
@@ -324,3 +331,76 @@ RPC endpoints deduplicated by whitespace-padded URLs, required parameter
 values stated only in prose). The document is vendored at `spec/openapi.json`
 purely as a reference for writing types by hand
 (source: [Withings developer documentation](https://developer.withings.com/api-reference/)).
+
+## Releases
+
+A maintainer releases from `main`: commit the new `version` in
+`package.json`, push the commit to `main`, then push the annotated tag for
+that version:
+
+```bash
+git tag -a v1.2.3 --cleanup=verbatim -F - <<'NOTES'
+## Changes
+
+- Describe a change a user will notice.
+NOTES
+git push origin v1.2.3
+```
+
+The tag message becomes the GitHub Release notes. Git reads it from standard
+input, and `--cleanup=verbatim` keeps lines that start with `#`, such as
+Markdown headings, which Git otherwise strips as comments.
+
+The tag starts the Release workflow. The workflow verifies that the tag is
+annotated, matches `package.json`, and belongs to `main`, then runs CI on
+the tagged commit. CI packs the npm artifact once, lints that tarball, and
+uploads it, then smoke-tests the installed package and the standalone
+executable. Both publishing jobs start only after every CI check passes, and
+download the uploaded artifact instead of building it again.
+
+The first job publishes the artifact to npm through
+[trusted publishing](https://docs.npmjs.com/trusted-publishers/), which
+attaches provenance. npm
+[scans a new version](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/)
+before serving it, so the second job waits up to 30 minutes for the version to
+become visible. It creates the GitHub Release only when the version on npm has
+the integrity of the checked artifact. It attaches the artifact while
+the release is a draft and then publishes it, because an
+[immutable release](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+locks its assets once it is published.
+
+Publishing relies on an npm trusted publisher for user `Hiro5409`, repository
+`withings-cli`, and workflow filename `release.yml`, with no environment.
+The workflow behaves the same whether or not the repository enforces immutable
+releases.
+
+To retry a failed run, rerun its failed jobs while the run keeps its artifact;
+they download the artifact the run already checked:
+
+```bash
+gh run rerun <run-id> --failed
+```
+
+Once the run or its artifact has expired, run the workflow again from its tag:
+
+```bash
+gh workflow run release.yml --ref v1.2.3
+```
+
+This run packs and checks the tagged commit again, and continues past a
+version already on npm only when the new tarball matches it byte for byte.
+Every run acts on what it finds: it publishes the artifact while the version
+is not visible on npm, and creates the GitHub Release while none exists for
+the tag. A release that carries the checked artifact is complete, and the run
+leaves it as it is. A run started from a branch stops at tag verification; the
+workflow never changes `main`, the version, or tags.
+
+A run stops when it cannot read npm or GitHub, when the version on npm differs
+from the checked artifact, and when an existing release lacks the checked
+artifact or carries a different one. A run also fails when npm does not serve
+the version within 30 minutes; retry once the version is visible.
+
+GitHub CLI attempts to delete its draft when attaching the artifact or
+publishing the release fails. A failed cleanup or an interrupted run can leave
+a draft release behind; the workflow does not look for drafts, so a maintainer
+deletes it.

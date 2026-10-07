@@ -291,7 +291,13 @@ bun test
 [Lefthook](https://lefthook.dev/) が `lefthook.yml` の Git hook を実行します。
 pre-commit hook は lint・型チェック・テスト・Knip を実行し、stage した変更を
 Gitleaks で検査します。pre-push hook は `bun audit --audit-level=high` を実行し、
-high と critical の advisory で失敗します。
+high と critical の advisory で失敗します。CI は同じチェックを実行し、同じ
+バージョンの Gitleaks で Git 履歴を検査します。
+
+`bun run check:package` は npm artifact を `artifact/` に pack し、その
+tarball を publint と Are the Types Wrong? で検査します。CI はさらに tarball を
+空のプロジェクトへインストールし、CLI を実行し、ライブラリ consumer の実行と
+型チェックを行います。
 
 ### OAuth の設計メモ
 
@@ -330,3 +336,75 @@ Withings の OpenAPI ドキュメントからのコード生成は意図的に�
 重複回避している、必須パラメータの値が散文にしか書かれていない、など）。
 ドキュメントは型を手書きする際の参照資料として `spec/openapi.json` に
 同梱しています（出典: [Withings developer documentation](https://developer.withings.com/api-reference/)）。
+
+## Releases
+
+メンテナーは `main` からリリースします。`package.json` の新しい `version` を
+コミットして `main` に push し、そのバージョンの annotated tag を push します:
+
+```bash
+git tag -a v1.2.3 --cleanup=verbatim -F - <<'NOTES'
+## Changes
+
+- Describe a change a user will notice.
+NOTES
+git push origin v1.2.3
+```
+
+tag のメッセージが GitHub Release のリリースノートになります。Git はメッセージを
+標準入力から読み取り、`--cleanup=verbatim` によって、Markdown の見出しなど `#` で
+始まる行がコメントとして削除されずに残ります。
+
+tag の push で Release workflow が始まります。workflow は tag が annotated で
+あること、`package.json` と一致すること、`main` に含まれることを検証し、
+tag のコミットで CI を実行します。CI は npm artifact を一度だけ pack し、その
+tarball を lint して upload した後、インストールした package と standalone
+executable を smoke test します。公開する2つの job は CI のチェックがすべて
+通った後にだけ始まり、ビルドし直さずに upload 済みの artifact を download
+します。
+
+1つ目の job は [trusted publishing](https://docs.npmjs.com/trusted-publishers/)
+で artifact を npm に公開し、provenance が付与されます。npm は新しいバージョンを
+配信前に
+[スキャンする](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/)
+ため、2つ目の job はバージョンが見えるようになるまで最大30分待ちます。npm 上の
+バージョンの integrity が検査済み artifact と一致する場合にだけ GitHub Release を
+作成します。
+[immutable release](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+は公開後に asset を固定するため、release が draft の間に artifact を添付して
+から公開します。
+
+公開は npm の trusted publisher（user `Hiro5409`、repository `withings-cli`、
+workflow filename `release.yml`、environment なし）に依存します。リポジトリが
+immutable releases を強制しているかどうかにかかわらず、workflow の動作は
+同じです。
+
+失敗した run をやり直すには、run が artifact を保持している間に失敗した job を
+再実行します。job はその run が検査済みの artifact を download します:
+
+```bash
+gh run rerun <run-id> --failed
+```
+
+run やその artifact の保持期限が切れた後は、tag から workflow を再実行します:
+
+```bash
+gh workflow run release.yml --ref v1.2.3
+```
+
+この run は tag のコミットを pack し直して検査し、npm に公開済みのバージョンが
+あれば、新しい tarball がそれとバイト単位で一致する場合にだけ先へ進みます。
+どの run も現状に応じて動作します。npm でバージョンが見えない間は artifact を
+公開し、tag の GitHub Release がない間は作成します。検査済み artifact を持つ
+release は完了済みで、run はそのままにします。branch から始めた run は tag の
+検証で止まります。workflow が `main`・バージョン・tag を変更することは
+ありません。
+
+run は、npm や GitHub を読めないとき、npm 上のバージョンが検査済み artifact と
+異なるとき、既存の release に検査済み artifact がない、または異なる artifact が
+あるときに停止します。npm が30分以内にバージョンを配信しない場合も失敗する
+ので、バージョンが見えるようになってからやり直します。
+
+GitHub CLI は、artifact の添付や release の公開に失敗すると自身の draft の
+削除を試みます。削除の失敗や run の中断で draft release が残ることがあります。
+workflow は draft を探さないため、メンテナーが削除します。
